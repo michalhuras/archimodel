@@ -3,12 +3,11 @@
   functions = "netlify/functions"
 
 [[redirects]]
-  from = "/"
+  from = "/login"
   to = "/login.html"
-  status = 302
+  status = 200
 
 [[redirects]]
-  from = "/index.html"
-  to = "/login.html"
-  status = 302
-  force = true
+  from = "/"
+  to = "/login"
+  status = 200
