@@ -1,0 +1,14 @@
+[build]
+  publish = "public"
+  functions = "netlify/functions"
+
+[[redirects]]
+  from = "/"
+  to = "/login.html"
+  status = 302
+
+[[redirects]]
+  from = "/index.html"
+  to = "/login.html"
+  status = 302
+  force = true

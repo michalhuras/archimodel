@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Login</title>
+</head>
+<body>
+  <h2>Protected site</h2>
+
+  <input type="password" id="password" placeholder="Password" />
+  <button onclick="login()">Enter</button>
+
+  <p id="error" style="color:red;"></p>
+
+  <script>
+    async function login() {
+      const password = document.getElementById("password").value
+
+      const res = await fetch("/.netlify/functions/auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password })
+      })
+
+      if (res.ok) {
+        localStorage.setItem("auth", "ok")
+        window.location.href = "/"
+      } else {
+        document.getElementById("error").innerText = "Invalid password"
+      }
+    }
+  </script>
+</body>
+</html>
