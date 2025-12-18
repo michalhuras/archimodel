@@ -8,6 +8,9 @@
   <h1>Private content</h1>
   <p>This page is protected.</p>
 
+  <h2>Apartments</h2>
+  <div id="apartments">Loading...</div>
+
   <button onclick="logout()">Logout</button>
 
   <script>
@@ -15,10 +18,43 @@
       window.location.href = "/login.html"
     }
 
+    async function loadApartments() {
+      const el = document.getElementById("apartments")
+
+      try {
+        const res = await fetch("/.netlify/functions/apartment")
+        if (!res.ok) throw new Error("Request failed")
+        const apartments = await res.json()
+
+        if (!Array.isArray(apartments) || apartments.length === 0) {
+          el.textContent = "No apartments"
+          return
+        }
+
+        const table = document.createElement("table")
+        const header = document.createElement("tr")
+        header.innerHTML = "<th>Name</th><th>Value</th><th>Area</th><th>State</th>"
+        table.appendChild(header)
+
+        for (const a of apartments) {
+          const row = document.createElement("tr")
+          row.innerHTML = `<td>${a.name ?? ""}</td><td>${a.value ?? ""}</td><td>${a.area ?? ""}</td><td>${a.state ?? ""}</td>`
+          table.appendChild(row)
+        }
+
+        el.textContent = ""
+        el.appendChild(table)
+      } catch (e) {
+        el.textContent = "Failed to load apartments"
+      }
+    }
+
     function logout() {
       localStorage.removeItem("auth")
       window.location.href = "/login.html"
     }
+
+    loadApartments()
   </script>
 </body>
 </html>
