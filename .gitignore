@@ -1,3 +1,9 @@
+# Binary 
+*.png
+
+# Project directories
+data/
+
 .env
 .env.*
 !.env.example

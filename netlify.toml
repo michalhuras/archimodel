@@ -1,6 +1,13 @@
 [build]
   publish = "public"
   functions = "netlify/functions"
+  command = "npm run precompute:overlays"
+
+[functions]
+  included_files = [
+    "netlify/functions/apartments.json",
+    "netlify/functions/layer-overlays.json"
+  ]
 
 [[redirects]]
   from = "/login"

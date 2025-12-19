@@ -1,0 +1,26 @@
+{
+  "name": "archimodel",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "precompute:overlays": "node scripts/precompute-layer-overlays.mjs",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/michalhuras/archimodel.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/michalhuras/archimodel/issues"
+  },
+  "homepage": "https://github.com/michalhuras/archimodel#readme",
+  "dependencies": {
+    "netlify-lambda": "^0.4.0",
+    "three": "^0.160.0"
+  }
+}
