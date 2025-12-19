@@ -8,12 +8,6 @@
     "netlify/functions/layer-overlays.json"
   ]
 
-[functions]
-  included_files = [
-    "netlify/functions/apartments.json",
-    "netlify/functions/layer-overlays.json"
-  ]
-
 [[redirects]]
   from = "/login"
   to = "/login.html"
