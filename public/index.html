@@ -11,6 +11,7 @@
       }
     }
   </script>
+  <script src="https://unpkg.com/fflate@0.8.2/umd/index.js"></script>
 </head>
 <body>
   <h1>Private content</h1>
@@ -18,6 +19,21 @@
 
   <h2>Apartments</h2>
   <div id="apartments">Loading...</div>
+
+  <h2>Renders</h2>
+  <div id="renders" style="width: 100%; max-width: 1100px; border: 1px solid #ddd; padding: 10px 12px; box-sizing: border-box;">
+    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+      <button id="renders-load" type="button">Load renders ZIP</button>
+      <button id="renders-prev" type="button" disabled>&larr; Prev</button>
+      <button id="renders-next" type="button" disabled>Next &rarr;</button>
+      <button id="renders-play" type="button" disabled>Play</button>
+      <div id="renders-status" style="font-size: 12px; color: #374151;"></div>
+    </div>
+    <div style="margin-top: 10px; width: 100%; height: 520px; background: #f7f7f7; border: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+      <img id="renders-img" alt="render" style="max-width: 100%; max-height: 100%; object-fit: contain; display: none;" />
+      <div id="renders-empty" style="color: #6b7280;">No renders loaded</div>
+    </div>
+  </div>
 
   <h2>3D model</h2>
   <div id="model-viewer" style="width: 100%; max-width: 1100px; height: 520px; border: 1px solid #ddd; position: relative; overflow: hidden;"></div>
@@ -92,6 +108,185 @@
     }
 
     loadApartments()
+
+    ;(() => {
+      const ZIP_BASE_URL = "https://pub-bd8c5d894c334dbfa30341d1d4208c04.r2.dev"
+      const ZIP_FILE_NAME = "render_webp.zip"
+      const ZIP_URL = "/.netlify/functions/renders-zip"
+
+      const loadBtn = document.getElementById("renders-load")
+      const prevBtn = document.getElementById("renders-prev")
+      const nextBtn = document.getElementById("renders-next")
+      const playBtn = document.getElementById("renders-play")
+      const statusEl = document.getElementById("renders-status")
+      const imgEl = document.getElementById("renders-img")
+      const emptyEl = document.getElementById("renders-empty")
+
+      if (!loadBtn || !prevBtn || !nextBtn || !playBtn || !statusEl || !imgEl || !emptyEl) return
+
+      let entries = []
+      let idx = 0
+      let currentUrl = null
+      let playTimer = null
+      const urlCache = new Map()
+
+      function setStatus(msg) {
+        statusEl.textContent = msg || ""
+      }
+
+      function isImageName(name) {
+        return /\.(webp|png|jpe?g|gif)$/i.test(String(name || ""))
+      }
+
+      function makeUrl(name, bytes) {
+        const cached = urlCache.get(name)
+        if (cached) return cached
+
+        const lower = String(name).toLowerCase()
+        let type = "application/octet-stream"
+        if (lower.endsWith(".webp")) type = "image/webp"
+        else if (lower.endsWith(".png")) type = "image/png"
+        else if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) type = "image/jpeg"
+        else if (lower.endsWith(".gif")) type = "image/gif"
+
+        const blob = new Blob([bytes], { type })
+        const url = URL.createObjectURL(blob)
+        urlCache.set(name, url)
+        return url
+      }
+
+      function cleanupUrls(keepNames) {
+        const keep = new Set(keepNames)
+        for (const [name, url] of urlCache.entries()) {
+          if (!keep.has(name)) {
+            URL.revokeObjectURL(url)
+            urlCache.delete(name)
+          }
+        }
+      }
+
+      function updateControls() {
+        const has = entries.length > 0
+        prevBtn.disabled = !has
+        nextBtn.disabled = !has
+        playBtn.disabled = !has
+        playBtn.textContent = playTimer ? "Pause" : "Play"
+      }
+
+      function show(i) {
+        if (!entries.length) return
+        idx = ((i % entries.length) + entries.length) % entries.length
+        const e = entries[idx]
+
+        const url = makeUrl(e.name, e.bytes)
+        if (currentUrl && currentUrl !== url) {
+          // keep cached urls; cleanup later
+        }
+        currentUrl = url
+
+        imgEl.src = url
+        imgEl.style.display = "block"
+        emptyEl.style.display = "none"
+        setStatus(`${idx + 1}/${entries.length} - ${e.name}`)
+
+        const keep = [e.name]
+        const prev = entries[(idx - 1 + entries.length) % entries.length]?.name
+        const next = entries[(idx + 1) % entries.length]?.name
+        if (prev) keep.push(prev)
+        if (next) keep.push(next)
+        cleanupUrls(keep)
+
+        updateControls()
+      }
+
+      function togglePlay() {
+        if (!entries.length) return
+        if (playTimer) {
+          clearInterval(playTimer)
+          playTimer = null
+          updateControls()
+          return
+        }
+        playTimer = setInterval(() => {
+          show(idx + 1)
+        }, 800)
+        updateControls()
+      }
+
+      prevBtn.onclick = () => show(idx - 1)
+      nextBtn.onclick = () => show(idx + 1)
+      playBtn.onclick = () => togglePlay()
+
+      loadBtn.onclick = async () => {
+        try {
+          loadBtn.disabled = true
+          if (playTimer) {
+            clearInterval(playTimer)
+            playTimer = null
+          }
+          entries = []
+          idx = 0
+          imgEl.style.display = "none"
+          emptyEl.style.display = "block"
+          emptyEl.textContent = "Loading ZIP..."
+          setStatus(`Downloading: ${ZIP_FILE_NAME}`)
+          updateControls()
+
+          const res = await fetch(ZIP_URL, { mode: "cors" })
+          if (!res.ok) throw new Error(`ZIP download failed (${res.status})`)
+
+          const buf = await res.arrayBuffer()
+          const u8 = new Uint8Array(buf)
+
+          if (!window.fflate?.unzipSync) {
+            throw new Error("ZIP library not loaded")
+          }
+
+          setStatus("Unzipping...")
+          const files = window.fflate.unzipSync(u8)
+
+          const list = []
+          for (const [name, bytes] of Object.entries(files)) {
+            if (!isImageName(name)) continue
+            list.push({ name, bytes })
+          }
+
+          list.sort((a, b) => a.name.localeCompare(b.name))
+
+          entries = list
+          if (!entries.length) {
+            emptyEl.textContent = "ZIP loaded, but no images found"
+            setStatus("No images in ZIP")
+            updateControls()
+            return
+          }
+
+          emptyEl.textContent = ""
+          show(0)
+        } catch (e) {
+          emptyEl.style.display = "block"
+          emptyEl.textContent = "Failed to load ZIP"
+          const msg = String(e?.message || e)
+          const hint =
+            msg.includes("Failed to fetch") || msg.includes("CORS")
+              ? "Hint: if this is a CORS error, ensure the R2 public URL is accessible from browsers and the object exists: " + ZIP_URL
+              : ""
+          setStatus([msg, hint].filter(Boolean).join(" | "))
+          updateControls()
+        } finally {
+          loadBtn.disabled = false
+        }
+      }
+
+      // Auto-load ZIP on page load
+      setTimeout(() => {
+        try {
+          loadBtn.click()
+        } catch {
+          // ignore
+        }
+      }, 0)
+    })()
   </script>
 
   <script>
