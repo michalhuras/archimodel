@@ -12,6 +12,7 @@ exports.handler = async (event) => {
       "..",
       "..",
       "data",
+      "paczka - makieta 3d",
       "test-makieta-obj.obj"
     )
 
