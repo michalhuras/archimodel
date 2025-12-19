@@ -12,6 +12,9 @@
     }
   </script>
   <script src="https://unpkg.com/fflate@0.8.2/umd/index.js"></script>
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/spritespin@4.0.11/release/spritespin.css" />
+  <script src="https://unpkg.com/spritespin@4.0.11/release/spritespin.js"></script>
 </head>
 <body>
   <h1>Private content</h1>
@@ -32,6 +35,11 @@
     <div style="margin-top: 10px; width: 100%; height: 520px; background: #f7f7f7; border: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: center; overflow: hidden;">
       <img id="renders-img" alt="render" style="max-width: 100%; max-height: 100%; object-fit: contain; display: none;" />
       <div id="renders-empty" style="color: #6b7280;">No renders loaded</div>
+    </div>
+
+    <div style="margin-top: 10px; width: 100%;">
+      <div style="font-weight: 600; margin-bottom: 6px;">360 view (SpriteSpin)</div>
+      <div id="spritespin-viewer" style="width: 100%; height: 520px; background: #f7f7f7; border: 1px solid #e5e7eb;"></div>
     </div>
   </div>
 
@@ -129,6 +137,7 @@
       let currentUrl = null
       let playTimer = null
       const urlCache = new Map()
+      let spritespinActive = false
 
       function setStatus(msg) {
         statusEl.textContent = msg || ""
@@ -156,6 +165,7 @@
       }
 
       function cleanupUrls(keepNames) {
+        if (spritespinActive) return
         const keep = new Set(keepNames)
         for (const [name, url] of urlCache.entries()) {
           if (!keep.has(name)) {
@@ -224,6 +234,21 @@
             clearInterval(playTimer)
             playTimer = null
           }
+
+          spritespinActive = false
+          try {
+            const spEl = document.getElementById("spritespin-viewer")
+            if (spEl && window.jQuery) {
+              const $sp = window.jQuery(spEl)
+              if ($sp.data("spritespin")) {
+                $sp.spritespin("destroy")
+              }
+              $sp.empty()
+            }
+          } catch {
+            // ignore
+          }
+
           entries = []
           idx = 0
           imgEl.style.display = "none"
@@ -232,7 +257,7 @@
           setStatus(`Downloading: ${ZIP_FILE_NAME}`)
           updateControls()
 
-          const res = await fetch(ZIP_URL, { mode: "cors" })
+          const res = await fetch(ZIP_URL)
           if (!res.ok) throw new Error(`ZIP download failed (${res.status})`)
 
           const buf = await res.arrayBuffer()
@@ -261,6 +286,37 @@
             return
           }
 
+          // Initialize SpriteSpin using all frames.
+          try {
+            const spEl = document.getElementById("spritespin-viewer")
+            if (!spEl) throw new Error("Missing #spritespin-viewer")
+            if (!window.jQuery || !window.jQuery.fn?.spritespin) {
+              throw new Error("SpriteSpin library not loaded")
+            }
+
+            // Create stable URLs for all frames.
+            const frameUrls = entries.map((e) => makeUrl(e.name, e.bytes))
+            spritespinActive = true
+
+            const $sp = window.jQuery(spEl)
+            if ($sp.data("spritespin")) {
+              $sp.spritespin("destroy")
+              $sp.empty()
+            }
+
+            $sp.spritespin({
+              source: frameUrls,
+              width: $sp.width() || 1100,
+              height: 520,
+              sense: -1,
+              frameTime: 60,
+              animate: false
+            })
+          } catch (e) {
+            // If SpriteSpin fails, keep the single-image viewer working.
+            spritespinActive = false
+          }
+
           emptyEl.textContent = ""
           show(0)
         } catch (e) {
@@ -268,8 +324,8 @@
           emptyEl.textContent = "Failed to load ZIP"
           const msg = String(e?.message || e)
           const hint =
-            msg.includes("Failed to fetch") || msg.includes("CORS")
-              ? "Hint: if this is a CORS error, ensure the R2 public URL is accessible from browsers and the object exists: " + ZIP_URL
+            msg.includes("Failed to fetch") || msg.includes("Network")
+              ? "Hint: open the proxy endpoint directly to see the upstream error: /.netlify/functions/renders-zip"
               : ""
           setStatus([msg, hint].filter(Boolean).join(" | "))
           updateControls()
