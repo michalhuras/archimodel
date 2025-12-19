@@ -8,6 +8,13 @@ exports.handler = async (event) => {
 
   try {
     const dataPath = path.join(__dirname, "apartments.json")
+    if (!fs.existsSync(dataPath)) {
+      return {
+        statusCode: 404,
+        headers: { "content-type": "application/json; charset=utf-8" },
+        body: JSON.stringify({ error: "apartments.json not found", path: dataPath })
+      }
+    }
     const raw = fs.readFileSync(dataPath, "utf8")
     const apartments = JSON.parse(raw)
 
@@ -23,7 +30,7 @@ exports.handler = async (event) => {
     return {
       statusCode: 500,
       headers: { "content-type": "application/json; charset=utf-8" },
-      body: JSON.stringify({ error: "Failed to load apartments" })
+      body: JSON.stringify({ error: "Failed to load apartments", details: e?.message })
     }
   }
 }

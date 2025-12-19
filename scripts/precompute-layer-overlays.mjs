@@ -181,7 +181,7 @@ async function main() {
   const repoRoot = path.join(__dirname, "..")
   const modelPath = path.resolve(repoRoot, args.model || path.join("data", "paczka - makieta 3d", "test-makieta-obj.obj"))
   const apartmentsPath = path.resolve(repoRoot, args.apartments || path.join("netlify", "functions", "apartments.json"))
-  const outPath = path.resolve(repoRoot, args.out || path.join("public", "layer-overlays.json"))
+  const outPath = path.resolve(repoRoot, args.out || path.join("netlify", "functions", "layer-overlays.json"))
 
   const w = Number.isFinite(args.width) && args.width > 0 ? args.width : 1100
   const h = Number.isFinite(args.height) && args.height > 0 ? args.height : 520
