@@ -17,14 +17,16 @@
   <script src="https://unpkg.com/spritespin@4.0.11/release/spritespin.js"></script>
 </head>
 <body>
-  <h1>Private content</h1>
-  <p>This page is protected.</p>
-
   <h2>Apartments</h2>
   <div id="apartments">Loading...</div>
 
   <h2>Renders</h2>
   <div id="renders" style="width: 100%; max-width: 1100px; border: 1px solid #ddd; padding: 10px 12px; box-sizing: border-box;">
+    <div style="margin-top: 10px; width: 100%;">
+      <div style="font-weight: 600; margin-bottom: 6px;">360 view (SpriteSpin)</div>
+      <div id="spritespin-viewer" style="width: 100%; max-width: 520px; aspect-ratio: 1 / 1; margin: 0 auto; background: #f7f7f7; border: 1px solid #e5e7eb;"></div>
+    </div>
+
     <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
       <button id="renders-load" type="button">Load renders ZIP</button>
       <button id="renders-prev" type="button" disabled>&larr; Prev</button>
@@ -37,19 +39,6 @@
       <div id="renders-empty" style="color: #6b7280;">No renders loaded</div>
     </div>
 
-    <div style="margin-top: 10px; width: 100%;">
-      <div style="font-weight: 600; margin-bottom: 6px;">360 view (SpriteSpin)</div>
-      <div id="spritespin-viewer" style="width: 100%; max-width: 520px; aspect-ratio: 1 / 1; margin: 0 auto; background: #f7f7f7; border: 1px solid #e5e7eb;"></div>
-    </div>
-  </div>
-
-  <h2>3D model</h2>
-  <div id="model-viewer" style="width: 100%; max-width: 1100px; height: 520px; border: 1px solid #ddd; position: relative; overflow: hidden;"></div>
-
-  <div id="plain-angle-controls" style="width: 100%; max-width: 1100px; border: 1px solid #ddd; border-top: 0; padding: 10px 12px; box-sizing: border-box; display: flex; align-items: center; gap: 12px;">
-    <button id="plain-angle-left" type="button">&larr;</button>
-    <div style="min-width: 90px; text-align: center; font-weight: 600;" id="plain-angle-value">0°</div>
-    <button id="plain-angle-right" type="button">&rarr;</button>
   </div>
 
   <button onclick="logout()">Logout</button>
@@ -121,6 +110,53 @@
       const ZIP_BASE_URL = "https://pub-bd8c5d894c334dbfa30341d1d4208c04.r2.dev"
       const ZIP_FILE_NAME = "render_webp.zip"
       const ZIP_URL = "/.netlify/functions/renders-zip"
+
+      function colorForState(state) {
+        const st = String(state || "").toLowerCase()
+        if (st === "selling") return "#86efac" // pastel green
+        if (st === "sold") return "#fca5a5" // pastel red
+        if (st === "reserved") return "#fdba74" // pastel orange
+        return "#93c5fd" // pastel blue fallback
+      }
+
+      async function fetchJson(url) {
+        const res = await fetch(url)
+        if (!res.ok) throw new Error(`Request failed: ${url} (${res.status})`)
+        return await res.json()
+      }
+
+      async function ensureOverlayGlobals() {
+        if (window.__layerOverlaysData && window.__layerToColor) return
+
+        try {
+          const [overlays, apartments] = await Promise.all([
+            fetchJson("/.netlify/functions/layer-overlays"),
+            fetchJson("/.netlify/functions/apartment").catch(() => [])
+          ])
+
+          window.__layerOverlaysData = overlays
+
+          const tmp = new Map()
+          for (const a of Array.isArray(apartments) ? apartments : []) {
+            const layer = normalizeLayerName(a.layer_name)
+            if (!layer) continue
+            if (!tmp.has(layer)) tmp.set(layer, colorForState(a.state))
+          }
+
+          // If apartments are missing/empty, fall back to whatever exists at frame 0
+          if (tmp.size === 0) {
+            const perLayer0 = overlays?.frames?.["0"] || {}
+            for (const layer of Object.keys(perLayer0)) {
+              tmp.set(layer, "#93c5fd")
+            }
+          }
+
+          window.__layerToColor = tmp
+        } catch (e) {
+          // Keep the page usable even if overlays fail to load.
+          console.warn("Failed to init overlay globals", e)
+        }
+      }
 
       const loadBtn = document.getElementById("renders-load")
       const prevBtn = document.getElementById("renders-prev")
@@ -387,6 +423,8 @@
             return
           }
 
+          await ensureOverlayGlobals()
+
           // Initialize SpriteSpin using all frames.
           try {
             const spEl = document.getElementById("spritespin-viewer")
@@ -453,157 +491,6 @@
     })()
   </script>
 
-  <script>
-    // --- Overlay-only viewer (no OBJ / no Three.js) ---
-    const viewerEl = document.getElementById("model-viewer")
-    if (!viewerEl) throw new Error("Missing #model-viewer")
-    viewerEl.style.background = "#f7f7f7"
-
-    const overlayRoot = document.createElement("div")
-    overlayRoot.style.position = "absolute"
-    overlayRoot.style.left = "0"
-    overlayRoot.style.top = "0"
-    overlayRoot.style.width = "100%"
-    overlayRoot.style.height = "100%"
-    overlayRoot.style.pointerEvents = "none"
-    viewerEl.appendChild(overlayRoot)
-
-    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg")
-    svg.setAttribute("width", "100%")
-    svg.setAttribute("height", "100%")
-    svg.setAttribute("preserveAspectRatio", "none")
-    svg.style.position = "absolute"
-    svg.style.left = "0"
-    svg.style.top = "0"
-    svg.style.pointerEvents = "none"
-    overlayRoot.appendChild(svg)
-
-    const leftBtn = document.getElementById("plain-angle-left")
-    const rightBtn = document.getElementById("plain-angle-right")
-    const angleValueEl = document.getElementById("plain-angle-value")
-
-    function normalizeName(s) {
-      return String(s || "")
-        .trim()
-        .toLowerCase()
-        .replace(/\s+/g, "_")
-    }
-
-    function colorForState(state) {
-      const st = String(state || "").toLowerCase()
-      if (st === "selling") return "#86efac" // pastel green
-      if (st === "sold") return "#fca5a5" // pastel red
-      if (st === "reserved") return "#fdba74" // pastel orange
-      return "#93c5fd" // pastel blue fallback
-    }
-
-    async function fetchJson(url) {
-      const res = await fetch(url)
-      if (!res.ok) throw new Error(`Request failed: ${url}`)
-      return await res.json()
-    }
-
-    let overlaysData = null
-    let layerToColor = new Map()
-    let currentFrameIndex = 0
-    let frameCount = 0
-    let selectedLayer = null
-    const pathsByLayer = new Map()
-
-    function ensureViewBox() {
-      if (!overlaysData) return
-      const w = overlaysData.width || 1100
-      const h = overlaysData.height || 520
-      svg.setAttribute("viewBox", `0 0 ${w} ${h}`)
-    }
-
-    function renderFrame(nextIndex) {
-      if (!overlaysData) return
-      const n = Number.isFinite(nextIndex) ? nextIndex : 0
-      currentFrameIndex = ((n % frameCount) + frameCount) % frameCount
-      if (angleValueEl) angleValueEl.textContent = `Frame ${currentFrameIndex + 1}/${frameCount}`
-
-      ensureViewBox()
-
-      const frameKey = String(currentFrameIndex)
-      const perLayer = overlaysData.frames?.[frameKey] || {}
-
-      // hide all existing paths first
-      for (const [, p] of pathsByLayer.entries()) {
-        p.style.display = "none"
-      }
-
-      for (const [layerName, col] of layerToColor.entries()) {
-        const shape = perLayer[layerName]
-        if (!shape || !shape.d) continue
-
-        let pathEl = pathsByLayer.get(layerName)
-        if (!pathEl) {
-          pathEl = document.createElementNS("http://www.w3.org/2000/svg", "path")
-          pathEl.style.cursor = "pointer"
-          pathEl.style.pointerEvents = "auto"
-
-          pathEl.addEventListener("click", () => {
-            selectedLayer = layerName
-            if (typeof window.__highlightApartmentsByLayer === "function") {
-              window.__highlightApartmentsByLayer(layerName)
-            }
-            renderFrame(currentFrameIndex)
-          })
-
-          svg.appendChild(pathEl)
-          pathsByLayer.set(layerName, pathEl)
-        }
-
-        pathEl.setAttribute("d", shape.d)
-        pathEl.setAttribute("fill", col)
-        pathEl.setAttribute("fill-opacity", "0.55")
-        pathEl.setAttribute("stroke", col)
-        pathEl.setAttribute("stroke-opacity", "0.9")
-        pathEl.setAttribute("stroke-width", selectedLayer === layerName ? "4" : "2")
-        pathEl.style.display = "block"
-      }
-    }
-
-    async function initOverlayViewer() {
-      const [overlays, apartments] = await Promise.all([
-        fetchJson("/.netlify/functions/layer-overlays"),
-        fetchJson("/.netlify/functions/apartment").catch(() => [])
-      ])
-
-      overlaysData = overlays
-      frameCount = Number(overlaysData.frameCount) || Object.keys(overlaysData.frames || {}).length || 0
-      if (!frameCount) throw new Error("No frames in overlay data")
-
-      window.__layerOverlaysData = overlaysData
-
-      const tmp = new Map()
-      for (const a of Array.isArray(apartments) ? apartments : []) {
-        const layer = normalizeName(a.layer_name)
-        if (!layer) continue
-        if (!tmp.has(layer)) tmp.set(layer, colorForState(a.state))
-      }
-      layerToColor = tmp
-
-      window.__layerToColor = layerToColor
-
-      // If apartments list is empty, fall back to whatever exists at angle 0
-      if (layerToColor.size === 0) {
-        const perLayer0 = overlaysData.frames?.["0"] || {}
-        for (const layer of Object.keys(perLayer0)) {
-          layerToColor.set(layer, "#93c5fd")
-        }
-      }
-
-      renderFrame(0)
-
-      if (leftBtn) leftBtn.onclick = () => renderFrame(currentFrameIndex - 1)
-      if (rightBtn) rightBtn.onclick = () => renderFrame(currentFrameIndex + 1)
-    }
-
-    initOverlayViewer().catch((e) => {
-      viewerEl.textContent = "Nie udało się wczytać danych overlay: " + (e?.message || e)
-    })
-  </script>
+  
 </body>
 </html>
