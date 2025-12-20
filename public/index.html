@@ -132,6 +132,88 @@
 
       if (!loadBtn || !prevBtn || !nextBtn || !playBtn || !statusEl || !imgEl || !emptyEl) return
 
+      const spritespinContainer = document.getElementById("spritespin-viewer")
+      let spritespinOverlaySvg = null
+      const spritespinOverlayPaths = new Map()
+      let spritespinSelectedLayer = null
+
+      function ensureSpritespinOverlaySvg(overlays) {
+        if (!spritespinContainer || !overlays) return null
+        spritespinContainer.style.position = "relative"
+
+        if (spritespinOverlaySvg) return spritespinOverlaySvg
+
+        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg")
+        svg.setAttribute("width", "100%")
+        svg.setAttribute("height", "100%")
+        svg.setAttribute("preserveAspectRatio", "none")
+        svg.style.position = "absolute"
+        svg.style.left = "0"
+        svg.style.top = "0"
+        svg.style.width = "100%"
+        svg.style.height = "100%"
+        svg.style.pointerEvents = "none"
+        svg.style.zIndex = "5"
+
+        const w = overlays.width || 1100
+        const h = overlays.height || 520
+        svg.setAttribute("viewBox", `0 0 ${w} ${h}`)
+
+        spritespinContainer.appendChild(svg)
+        spritespinOverlaySvg = svg
+        return svg
+      }
+
+      function renderSpritespinOverlay(angleDeg) {
+        const overlays = window.__layerOverlaysData
+        const layerColors = window.__layerToColor
+        if (!overlays || !layerColors) return
+
+        const svg = ensureSpritespinOverlaySvg(overlays)
+        if (!svg) return
+
+        const step = Number(overlays.stepDeg) || 5
+        const n = ((angleDeg % 360) + 360) % 360
+        const snapped = Math.round(n / step) * step
+        const a = ((snapped % 360) + 360) % 360
+        const perLayer = overlays.angles?.[String(a)] || {}
+
+        for (const [, p] of spritespinOverlayPaths.entries()) {
+          p.style.display = "none"
+        }
+
+        for (const [layerName, col] of layerColors.entries()) {
+          const shape = perLayer[layerName]
+          if (!shape || !shape.d) continue
+
+          let pathEl = spritespinOverlayPaths.get(layerName)
+          if (!pathEl) {
+            pathEl = document.createElementNS("http://www.w3.org/2000/svg", "path")
+            pathEl.style.cursor = "pointer"
+            pathEl.style.pointerEvents = "auto"
+
+            pathEl.addEventListener("click", () => {
+              spritespinSelectedLayer = layerName
+              if (typeof window.__highlightApartmentsByLayer === "function") {
+                window.__highlightApartmentsByLayer(layerName)
+              }
+              renderSpritespinOverlay(a)
+            })
+
+            svg.appendChild(pathEl)
+            spritespinOverlayPaths.set(layerName, pathEl)
+          }
+
+          pathEl.setAttribute("d", shape.d)
+          pathEl.setAttribute("fill", col)
+          pathEl.setAttribute("fill-opacity", "0.22")
+          pathEl.setAttribute("stroke", col)
+          pathEl.setAttribute("stroke-opacity", "0.9")
+          pathEl.setAttribute("stroke-width", spritespinSelectedLayer === layerName ? "4" : "2")
+          pathEl.style.display = "block"
+        }
+      }
+
       let entries = []
       let idx = 0
       let currentUrl = null
@@ -310,8 +392,17 @@
               height: 520,
               sense: -1,
               frameTime: 60,
-              animate: false
+              animate: false,
+              onFrameChanged: function (e, data) {
+                const step = (window.__layerOverlaysData && Number(window.__layerOverlaysData.stepDeg)) || 5
+                const frame = Number(data?.frame) || 0
+                renderSpritespinOverlay(frame * step)
+              }
             })
+
+            // Render overlay for initial frame.
+            const step = (window.__layerOverlaysData && Number(window.__layerOverlaysData.stepDeg)) || 5
+            renderSpritespinOverlay(0 * step)
           } catch (e) {
             // If SpriteSpin fails, keep the single-image viewer working.
             spritespinActive = false
@@ -471,6 +562,8 @@
       overlaysData = overlays
       stepDeg = Number(overlaysData.stepDeg) || 5
 
+      window.__layerOverlaysData = overlaysData
+
       const tmp = new Map()
       for (const a of Array.isArray(apartments) ? apartments : []) {
         const layer = normalizeName(a.layer_name)
@@ -478,6 +571,8 @@
         if (!tmp.has(layer)) tmp.set(layer, colorForState(a.state))
       }
       layerToColor = tmp
+
+      window.__layerToColor = layerToColor
 
       // If apartments list is empty, fall back to whatever exists at angle 0
       if (layerToColor.size === 0) {
