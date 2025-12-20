@@ -4,6 +4,7 @@ import { fileURLToPath } from "url"
 
 import * as THREE from "three"
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js"
+import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader.js"
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -155,19 +156,21 @@ function projectLayerPoints({ nodes, camera, w, h }) {
 function parseArgs(argv) {
   const args = {
     model: null,
+    camerasFbx: null,
+    listCameraCandidates: false,
     apartments: null,
     out: null,
-    step: 5,
-    width: 1100,
-    height: 520
+    width: 1280,
+    height: 1280
   }
 
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i]
     if (a === "--model") args.model = argv[++i]
+    else if (a === "--camerasFbx") args.camerasFbx = argv[++i]
+    else if (a === "--listCameraCandidates") args.listCameraCandidates = true
     else if (a === "--apartments") args.apartments = argv[++i]
     else if (a === "--out") args.out = argv[++i]
-    else if (a === "--step") args.step = Number(argv[++i])
     else if (a === "--width") args.width = Number(argv[++i])
     else if (a === "--height") args.height = Number(argv[++i])
   }
@@ -175,17 +178,206 @@ function parseArgs(argv) {
   return args
 }
 
+function listCamerasFromFbx({ fbxPath }) {
+  const fbxBuf = fs.readFileSync(fbxPath)
+  const ab = fbxBuf.buffer.slice(fbxBuf.byteOffset, fbxBuf.byteOffset + fbxBuf.byteLength)
+  const loader = new FBXLoader()
+  const scene = loader.parse(ab, path.dirname(fbxPath))
+  scene.updateMatrixWorld(true)
+
+  // Corona cameras exported from 3ds Max are often Groups/Dummies (not isCamera).
+  // We treat nodes named Corona_Camera### as cameras and Corona_Camera###Target as their lookAt target.
+  const byName = new Map()
+  const nodes = []
+  scene.traverse((o) => {
+    if (!o) return
+    nodes.push(o)
+    const n = String(o.name || "")
+    if (n) byName.set(n, o)
+  })
+
+  const coronaRe = /^Corona_Camera(\d+)$/i
+  const coronaCameras = []
+  for (const [name, o] of byName.entries()) {
+    const m = name.match(coronaRe)
+    if (!m) continue
+
+    const idx = m[1]
+    const targetName = `Corona_Camera${idx}Target`
+    const targetObj = byName.get(targetName)
+
+    o.updateMatrixWorld(true)
+    const pos = new THREE.Vector3().setFromMatrixPosition(o.matrixWorld)
+
+    let target = null
+    if (targetObj) {
+      targetObj.updateMatrixWorld(true)
+      target = new THREE.Vector3().setFromMatrixPosition(targetObj.matrixWorld)
+    }
+
+    // FOV is not guaranteed on Group nodes.
+    const fov = Number.isFinite(o.fov) ? o.fov : null
+    coronaCameras.push({ name, order: Number(idx), position: pos, target, fov })
+  }
+
+  coronaCameras.sort((a, b) => (a.order === b.order ? a.name.localeCompare(b.name) : a.order - b.order))
+  process.stdout.write(`FBX traverse: nodes=${nodes.length}, coronaCameras=${coronaCameras.length}\n`)
+  for (const c of coronaCameras.slice(0, 40)) {
+    process.stdout.write(
+      ` - corona camera: name='${c.name}' pos=${c.position.x},${c.position.y},${c.position.z} target=${c.target ? `${c.target.x},${c.target.y},${c.target.z}` : "(none)"}\n`
+    )
+  }
+
+  // If no Corona cameras were found, fall back to anything marked as isCamera.
+  if (!coronaCameras.length) {
+    const cams = []
+    scene.traverse((o) => {
+      if (o && o.isCamera) cams.push(o)
+    })
+    cams.sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")))
+    process.stdout.write(`FBX isCamera fallback: ${cams.length}\n`)
+    return cams
+  }
+
+  return coronaCameras
+}
+
+function listCameraCandidatesFromFbx({ fbxPath }) {
+  const fbxBuf = fs.readFileSync(fbxPath)
+  const ab = fbxBuf.buffer.slice(fbxBuf.byteOffset, fbxBuf.byteOffset + fbxBuf.byteLength)
+  const loader = new FBXLoader()
+  const scene = loader.parse(ab, path.dirname(fbxPath))
+  scene.updateMatrixWorld(true)
+
+  const candidates = []
+  scene.traverse((o) => {
+    if (!o) return
+    const t = String(o.type || "")
+    const n = String(o.name || "")
+    const isLike = /camera/i.test(t) || /cam/i.test(n) || Boolean(o.isCamera)
+    if (!isLike) return
+
+    o.updateMatrixWorld(true)
+    const pos = new THREE.Vector3()
+    const quat = new THREE.Quaternion()
+    const scl = new THREE.Vector3()
+    o.matrixWorld.decompose(pos, quat, scl)
+
+    candidates.push({
+      name: n,
+      type: t,
+      isCamera: Boolean(o.isCamera),
+      fov: Number.isFinite(o.fov) ? o.fov : null,
+      near: Number.isFinite(o.near) ? o.near : null,
+      far: Number.isFinite(o.far) ? o.far : null,
+      position: [pos.x, pos.y, pos.z],
+      quaternion: [quat.x, quat.y, quat.z, quat.w]
+    })
+  })
+
+  candidates.sort((a, b) => String(a.name).localeCompare(String(b.name)))
+  return candidates
+}
+
+function makePerspectiveFromAnyCamera({ srcCam, w, h }) {
+  const fov = Number.isFinite(srcCam?.fov) ? srcCam.fov : Number.isFinite(srcCam?.fovDeg) ? srcCam.fovDeg : 45
+  const near = Number.isFinite(srcCam?.near) ? srcCam.near : 0.1
+  const far = Number.isFinite(srcCam?.far) ? srcCam.far : 5000
+  const cam = new THREE.PerspectiveCamera(fov, w / h, near, far)
+
+  if (srcCam && srcCam.isObject3D) {
+    const pos = new THREE.Vector3()
+    const quat = new THREE.Quaternion()
+    const scl = new THREE.Vector3()
+    srcCam.updateMatrixWorld(true)
+    srcCam.matrixWorld.decompose(pos, quat, scl)
+    cam.position.copy(pos)
+    cam.quaternion.copy(quat)
+  } else if (srcCam && srcCam.position) {
+    cam.position.copy(srcCam.position)
+  }
+
+  cam.updateMatrixWorld(true)
+  cam.updateProjectionMatrix()
+  return cam
+}
+
 async function main() {
   const args = parseArgs(process.argv)
 
+  // Minimal DOM polyfill for Node.js to support three.js loaders that assume a browser.
+  // This is intentionally tiny: we only need to avoid hard crashes like "document is not defined".
+  if (typeof globalThis.Image === "undefined") {
+    globalThis.Image = class Image {
+      constructor() {
+        this.onload = null
+        this.onerror = null
+      }
+      addEventListener(type, cb) {
+        if (type === "load") this.onload = cb
+        if (type === "error") this.onerror = cb
+      }
+      removeEventListener() {}
+      set src(_) {
+        // Immediately succeed; we only need FBXLoader to continue parsing.
+        if (typeof this.onload === "function") setTimeout(() => this.onload(), 0)
+      }
+      get src() {
+        return ""
+      }
+    }
+  }
+
+  if (typeof globalThis.document === "undefined") {
+    globalThis.document = {
+      createElementNS: (_ns, tag) => {
+        const t = String(tag || "").toLowerCase()
+        if (t === "img" || t === "image") return new globalThis.Image()
+        return {}
+      },
+      createElement: (tag) => {
+        const t = String(tag || "").toLowerCase()
+        if (t === "img" || t === "image") return new globalThis.Image()
+        return {}
+      }
+    }
+  }
+  if (typeof globalThis.window === "undefined") {
+    globalThis.window = {}
+  }
+
+  if (args.listCameraCandidates) {
+    if (!args.camerasFbx) {
+      throw new Error("--listCameraCandidates requires --camerasFbx")
+    }
+    const repoRoot = path.join(__dirname, "..")
+    const fbxPath = path.resolve(repoRoot, args.camerasFbx)
+    process.stdout.write(`FBX cameras path: ${fbxPath}\n`)
+    const ok = fs.existsSync(fbxPath)
+    process.stdout.write(`FBX exists: ${ok}\n`)
+    if (!ok) throw new Error(`FBX file not found: ${fbxPath}`)
+
+    process.stdout.write("Listing camera candidates...\n")
+    const candidates = listCameraCandidatesFromFbx({ fbxPath })
+    process.stdout.write(`Found ${candidates.length} camera candidate(s)\n`)
+    for (const c of candidates) {
+      process.stdout.write(
+        `${c.isCamera ? "[CAM]" : "[?]"} name='${c.name}' type='${c.type}' fov=${c.fov} pos=${c.position.join(",")} quat=${c.quaternion.join(",")}\n`
+      )
+    }
+    return
+  }
+
   const repoRoot = path.join(__dirname, "..")
   const modelPath = path.resolve(repoRoot, args.model || path.join("data", "paczka - makieta 3d", "test-makieta-obj.obj"))
+  const camerasFbxPath = args.camerasFbx
+    ? path.resolve(repoRoot, args.camerasFbx)
+    : path.resolve(repoRoot, path.join("data", "paczka - makieta 3d", "test-makieta-3ds.fbx"))
   const apartmentsPath = path.resolve(repoRoot, args.apartments || path.join("netlify", "functions", "apartments.json"))
   const outPath = path.resolve(repoRoot, args.out || path.join("netlify", "functions", "layer-overlays.json"))
 
   const w = Number.isFinite(args.width) && args.width > 0 ? args.width : 1100
   const h = Number.isFinite(args.height) && args.height > 0 ? args.height : 520
-  const step = Number.isFinite(args.step) && args.step > 0 ? args.step : 5
 
   const apartments = JSON.parse(fs.readFileSync(apartmentsPath, "utf8"))
   const layerNames = [...new Set((Array.isArray(apartments) ? apartments : []).map((a) => normalizeName(a?.layer_name)).filter(Boolean))]
@@ -197,22 +389,9 @@ async function main() {
   root.updateMatrixWorld(true)
 
   const box = new THREE.Box3().setFromObject(root)
-  const size = box.getSize(new THREE.Vector3())
   const center = box.getCenter(new THREE.Vector3())
 
-  const maxDim = Math.max(size.x, size.y, size.z) || 1
-
-  const camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 5000)
-
-  const fov = camera.fov * (Math.PI / 180)
-  const dist = (maxDim / 2) / Math.tan(fov / 2)
-
   const target = center
-  const baseOffset = new THREE.Vector3(dist * 1.2, dist * 0.7, dist * 1.2)
-
-  camera.near = Math.max(0.1, dist / 100)
-  camera.far = Math.max(5000, dist * 10)
-  camera.updateProjectionMatrix()
 
   const layers = new Map()
   for (const ln of layerNames) {
@@ -220,12 +399,73 @@ async function main() {
     if (nodes.length) layers.set(ln, nodes)
   }
 
-  const angles = {}
-  for (let deg = 0; deg < 360; deg += step) {
-    const rad = (deg * Math.PI) / 180
-    const offset = baseOffset.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), rad)
-    camera.position.copy(target).add(offset)
-    camera.lookAt(target)
+  let cameras = []
+  let cameraMeta = []
+  const fbxExists = Boolean(camerasFbxPath && fs.existsSync(camerasFbxPath))
+  process.stdout.write(`FBX cameras path: ${camerasFbxPath}\n`)
+  process.stdout.write(`FBX exists: ${fbxExists}\n`)
+
+  const requireFbxCameras = Boolean(args.camerasFbx)
+  if (requireFbxCameras && !fbxExists) {
+    throw new Error(`FBX file not found: ${camerasFbxPath}`)
+  }
+
+  if (!requireFbxCameras) {
+    throw new Error("FBX cameras are required. Run with --camerasFbx <path-to-fbx>.")
+  }
+
+  if (fbxExists) {
+    try {
+      process.stdout.write(`Loading cameras from FBX: ${camerasFbxPath}\n`)
+      cameras = listCamerasFromFbx({ fbxPath: camerasFbxPath })
+      if (cameras.length) {
+        process.stdout.write(`Loaded ${cameras.length} camera(s) from ${camerasFbxPath}\n`)
+
+        cameraMeta = cameras.map((c) => {
+          const pos = new THREE.Vector3()
+          const quat = new THREE.Quaternion()
+          const scl = new THREE.Vector3()
+
+          if (c && c.isObject3D) {
+            c.updateMatrixWorld(true)
+            c.matrixWorld.decompose(pos, quat, scl)
+          } else if (c && c.position) {
+            pos.copy(c.position)
+          }
+
+          return {
+            name: String(c.name || ""),
+            fov: Number.isFinite(c.fov) ? c.fov : null,
+            near: Number.isFinite(c.near) ? c.near : null,
+            far: Number.isFinite(c.far) ? c.far : null,
+            position: [pos.x, pos.y, pos.z],
+            target: c && c.target ? [c.target.x, c.target.y, c.target.z] : null
+          }
+        })
+      } else {
+        process.stdout.write(`No cameras found in ${camerasFbxPath} (falling back to orbit)\n`)
+      }
+    } catch (e) {
+      process.stdout.write(
+        `Failed to parse cameras from FBX (${camerasFbxPath}), falling back to orbit: ${e?.message}\n`
+      )
+      cameras = []
+      cameraMeta = []
+    }
+  }
+
+  if (requireFbxCameras && cameras.length === 0) {
+    // User explicitly requested FBX cameras; do not silently fall back and do not write output.
+    throw new Error("FBX cameras requested but none could be loaded")
+  }
+
+  const frames = {}
+  for (let i = 0; i < cameras.length; i++) {
+    const camera = makePerspectiveFromAnyCamera({ srcCam: cameras[i], w, h })
+    // Corona cameras: if a Target exists, prefer lookAt(target); otherwise keep orientation.
+    if (cameras[i] && cameras[i].target) {
+      camera.lookAt(cameras[i].target)
+    }
     camera.updateMatrixWorld(true)
 
     root.updateMatrixWorld(true)
@@ -239,7 +479,7 @@ async function main() {
       if (d) perLayer[layerName] = { d, hull }
     }
 
-    angles[String(deg)] = perLayer
+    frames[String(i)] = perLayer
   }
 
   fs.mkdirSync(path.dirname(outPath), { recursive: true })
@@ -249,9 +489,11 @@ async function main() {
       {
         width: w,
         height: h,
-        stepDeg: step,
         generatedAt: new Date().toISOString(),
-        angles
+        mode: "fbx",
+        frameCount: cameras.length,
+        cameras: cameraMeta,
+        frames
       },
       null,
       2

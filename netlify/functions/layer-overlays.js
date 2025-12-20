@@ -11,8 +11,8 @@ exports.handler = async (event) => {
       // Preferred: generated into the functions directory during build, so it ships with the function.
       path.join(__dirname, "layer-overlays.json"),
       // Fallbacks for local/dev setups
-      path.join(__dirname, "..", "..", "public", "layer-overlays.json"),
-      path.join(__dirname, "..", "..", "public", "layer-overlays.json")
+      path.join(process.cwd(), "netlify", "functions", "layer-overlays.json"),
+      path.join(process.cwd(), "public", "layer-overlays.json")
     ]
 
     let jsonText = null
@@ -37,9 +37,8 @@ exports.handler = async (event) => {
       statusCode: 200,
       headers: {
         "content-type": "application/json; charset=utf-8",
-        // If you want immutable caching, serve it as a static asset.
-        // For a function response keep caching moderate to avoid stale data across redeploys.
-        "cache-control": "public, max-age=3600"
+        // Avoid stale overlays while iterating on schema.
+        "cache-control": "no-store"
       },
       body: jsonText
     }

@@ -39,7 +39,7 @@
 
     <div style="margin-top: 10px; width: 100%;">
       <div style="font-weight: 600; margin-bottom: 6px;">360 view (SpriteSpin)</div>
-      <div id="spritespin-viewer" style="width: 100%; height: 520px; background: #f7f7f7; border: 1px solid #e5e7eb;"></div>
+      <div id="spritespin-viewer" style="width: 100%; max-width: 520px; aspect-ratio: 1 / 1; margin: 0 auto; background: #f7f7f7; border: 1px solid #e5e7eb;"></div>
     </div>
   </div>
 
@@ -164,7 +164,7 @@
         return svg
       }
 
-      function renderSpritespinOverlay(angleDeg) {
+      function renderSpritespinOverlay({ angleDeg, frameIndex }) {
         const overlays = window.__layerOverlaysData
         const layerColors = window.__layerToColor
         if (!overlays || !layerColors) return
@@ -172,11 +172,11 @@
         const svg = ensureSpritespinOverlaySvg(overlays)
         if (!svg) return
 
-        const step = Number(overlays.stepDeg) || 5
-        const n = ((angleDeg % 360) + 360) % 360
-        const snapped = Math.round(n / step) * step
-        const a = ((snapped % 360) + 360) % 360
-        const perLayer = overlays.angles?.[String(a)] || {}
+        const framesObj = overlays.frames || {}
+        const count = Number(overlays.frameCount) || Object.keys(framesObj).length
+        const idx = Number.isFinite(frameIndex) ? frameIndex : 0
+        const clamped = Math.max(0, Math.min(count - 1, idx))
+        const perLayer = framesObj[String(clamped)] || {}
 
         for (const [, p] of spritespinOverlayPaths.entries()) {
           p.style.display = "none"
@@ -197,7 +197,7 @@
               if (typeof window.__highlightApartmentsByLayer === "function") {
                 window.__highlightApartmentsByLayer(layerName)
               }
-              renderSpritespinOverlay(a)
+              renderSpritespinOverlay({ frameIndex: clamped })
             })
 
             svg.appendChild(pathEl)
@@ -217,12 +217,15 @@
       let entries = []
       let idx = 0
       let currentUrl = null
+      let currentDims = null
       let playTimer = null
       const urlCache = new Map()
       let spritespinActive = false
 
       function setStatus(msg) {
-        statusEl.textContent = msg || ""
+        const base = msg || ""
+        const dims = currentDims ? ` (${currentDims.w}×${currentDims.h})` : ""
+        statusEl.textContent = base + dims
       }
 
       function isImageName(name) {
@@ -275,6 +278,20 @@
           // keep cached urls; cleanup later
         }
         currentUrl = url
+
+        currentDims = null
+        imgEl.onload = () => {
+          try {
+            const w = imgEl.naturalWidth
+            const h = imgEl.naturalHeight
+            if (Number.isFinite(w) && Number.isFinite(h) && w > 0 && h > 0) {
+              currentDims = { w, h }
+              setStatus(`${idx + 1}/${entries.length} - ${e.name}`)
+            }
+          } catch {
+            // ignore
+          }
+        }
 
         imgEl.src = url
         imgEl.style.display = "block"
@@ -388,21 +405,19 @@
 
             $sp.spritespin({
               source: frameUrls,
-              width: $sp.width() || 1100,
-              height: 520,
+              width: Math.min($sp.width() || 520, 520),
+              height: Math.min($sp.width() || 520, 520),
               sense: -1,
               frameTime: 60,
               animate: false,
               onFrameChanged: function (e, data) {
-                const step = (window.__layerOverlaysData && Number(window.__layerOverlaysData.stepDeg)) || 5
                 const frame = Number(data?.frame) || 0
-                renderSpritespinOverlay(frame * step)
+                renderSpritespinOverlay({ frameIndex: frame })
               }
             })
 
             // Render overlay for initial frame.
-            const step = (window.__layerOverlaysData && Number(window.__layerOverlaysData.stepDeg)) || 5
-            renderSpritespinOverlay(0 * step)
+            renderSpritespinOverlay({ frameIndex: 0 })
           } catch (e) {
             // If SpriteSpin fails, keep the single-image viewer working.
             spritespinActive = false
@@ -488,16 +503,10 @@
 
     let overlaysData = null
     let layerToColor = new Map()
-    let currentAngleDeg = 0
-    let stepDeg = 5
+    let currentFrameIndex = 0
+    let frameCount = 0
     let selectedLayer = null
     const pathsByLayer = new Map()
-
-    function normalizeAngleToStep(deg) {
-      const n = ((deg % 360) + 360) % 360
-      const snapped = Math.round(n / stepDeg) * stepDeg
-      return ((snapped % 360) + 360) % 360
-    }
 
     function ensureViewBox() {
       if (!overlaysData) return
@@ -506,15 +515,16 @@
       svg.setAttribute("viewBox", `0 0 ${w} ${h}`)
     }
 
-    function renderAngle(deg) {
+    function renderFrame(nextIndex) {
       if (!overlaysData) return
-      currentAngleDeg = normalizeAngleToStep(deg)
-      if (angleValueEl) angleValueEl.textContent = `${currentAngleDeg}°`
+      const n = Number.isFinite(nextIndex) ? nextIndex : 0
+      currentFrameIndex = ((n % frameCount) + frameCount) % frameCount
+      if (angleValueEl) angleValueEl.textContent = `Frame ${currentFrameIndex + 1}/${frameCount}`
 
       ensureViewBox()
 
-      const angleKey = String(currentAngleDeg)
-      const perLayer = overlaysData.angles?.[angleKey] || {}
+      const frameKey = String(currentFrameIndex)
+      const perLayer = overlaysData.frames?.[frameKey] || {}
 
       // hide all existing paths first
       for (const [, p] of pathsByLayer.entries()) {
@@ -536,7 +546,7 @@
             if (typeof window.__highlightApartmentsByLayer === "function") {
               window.__highlightApartmentsByLayer(layerName)
             }
-            renderAngle(currentAngleDeg)
+            renderFrame(currentFrameIndex)
           })
 
           svg.appendChild(pathEl)
@@ -560,7 +570,8 @@
       ])
 
       overlaysData = overlays
-      stepDeg = Number(overlaysData.stepDeg) || 5
+      frameCount = Number(overlaysData.frameCount) || Object.keys(overlaysData.frames || {}).length || 0
+      if (!frameCount) throw new Error("No frames in overlay data")
 
       window.__layerOverlaysData = overlaysData
 
@@ -576,16 +587,16 @@
 
       // If apartments list is empty, fall back to whatever exists at angle 0
       if (layerToColor.size === 0) {
-        const perLayer0 = overlaysData.angles?.["0"] || {}
+        const perLayer0 = overlaysData.frames?.["0"] || {}
         for (const layer of Object.keys(perLayer0)) {
           layerToColor.set(layer, "#93c5fd")
         }
       }
 
-      renderAngle(0)
+      renderFrame(0)
 
-      if (leftBtn) leftBtn.onclick = () => renderAngle(currentAngleDeg - stepDeg)
-      if (rightBtn) rightBtn.onclick = () => renderAngle(currentAngleDeg + stepDeg)
+      if (leftBtn) leftBtn.onclick = () => renderFrame(currentFrameIndex - 1)
+      if (rightBtn) rightBtn.onclick = () => renderFrame(currentFrameIndex + 1)
     }
 
     initOverlayViewer().catch((e) => {
