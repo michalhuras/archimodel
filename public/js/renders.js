@@ -36,16 +36,10 @@
     }
   }
 
-  const loadBtn = document.getElementById("renders-load")
-  const prevBtn = document.getElementById("renders-prev")
-  const nextBtn = document.getElementById("renders-next")
-  const playBtn = document.getElementById("renders-play")
   const toggleLayersBtn = document.getElementById("spritespin-toggle-layers")
   const statusEl = document.getElementById("renders-status")
-  const imgEl = document.getElementById("renders-img")
-  const emptyEl = document.getElementById("renders-empty")
 
-  if (!loadBtn || !prevBtn || !nextBtn || !playBtn || !toggleLayersBtn || !statusEl || !imgEl || !emptyEl) return
+  if (!toggleLayersBtn || !statusEl) return
 
   const spritespinContainer = document.getElementById("spritespin-viewer")
   let spritespinOverlaySvg = null
@@ -135,7 +129,6 @@
 
   let entries = []
   let idx = 0
-  let currentUrl = null
   let currentDims = null
   let playTimer = null
   const urlCache = new Map()
@@ -181,11 +174,7 @@
 
   function updateControls() {
     const has = entries.length > 0
-    prevBtn.disabled = !has
-    nextBtn.disabled = !has
-    playBtn.disabled = !has
     toggleLayersBtn.disabled = !has
-    playBtn.textContent = playTimer ? "Pause" : "Play"
     toggleLayersBtn.textContent = spritespinLayersEnabled ? "Hide layers" : "Show layers"
   }
 
@@ -200,67 +189,8 @@
     updateControls()
   }
 
-  function show(i) {
-    if (!entries.length) return
-    idx = ((i % entries.length) + entries.length) % entries.length
-    const e = entries[idx]
-
-    const url = makeUrl(e.name, e.bytes)
-    if (currentUrl && currentUrl !== url) {
-      // keep cached urls; cleanup later
-    }
-    currentUrl = url
-
-    currentDims = null
-    imgEl.onload = () => {
-      try {
-        const w = imgEl.naturalWidth
-        const h = imgEl.naturalHeight
-        if (Number.isFinite(w) && Number.isFinite(h) && w > 0 && h > 0) {
-          currentDims = { w, h }
-          setStatus(`${idx + 1}/${entries.length} - ${e.name}`)
-        }
-      } catch {
-        // ignore
-      }
-    }
-
-    imgEl.src = url
-    imgEl.style.display = "block"
-    emptyEl.style.display = "none"
-    setStatus(`${idx + 1}/${entries.length} - ${e.name}`)
-
-    const keep = [e.name]
-    const prev = entries[(idx - 1 + entries.length) % entries.length]?.name
-    const next = entries[(idx + 1) % entries.length]?.name
-    if (prev) keep.push(prev)
-    if (next) keep.push(next)
-    cleanupUrls(keep)
-
-    updateControls()
-  }
-
-  function togglePlay() {
-    if (!entries.length) return
-    if (playTimer) {
-      clearInterval(playTimer)
-      playTimer = null
-      updateControls()
-      return
-    }
-    playTimer = setInterval(() => {
-      show(idx + 1)
-    }, 800)
-    updateControls()
-  }
-
-  prevBtn.onclick = () => show(idx - 1)
-  nextBtn.onclick = () => show(idx + 1)
-  playBtn.onclick = () => togglePlay()
-
-  loadBtn.onclick = async () => {
+  async function loadZipAndInitSpriteSpin() {
     try {
-      loadBtn.disabled = true
       if (playTimer) {
         clearInterval(playTimer)
         playTimer = null
@@ -282,9 +212,6 @@
 
       entries = []
       idx = 0
-      imgEl.style.display = "none"
-      emptyEl.style.display = "block"
-      emptyEl.textContent = "Loading ZIP..."
       setStatus(`Downloading: ${ZIP_FILE_NAME}`)
       updateControls()
 
@@ -299,6 +226,7 @@
       }
 
       setStatus("Unzipping...")
+      await new Promise((r) => setTimeout(r, 0))
       const files = window.fflate.unzipSync(u8)
 
       const list = []
@@ -311,11 +239,14 @@
 
       entries = list
       if (!entries.length) {
-        emptyEl.textContent = "ZIP loaded, but no images found"
         setStatus("No images in ZIP")
         updateControls()
         return
       }
+
+      setStatus(`Loaded ${entries.length} frames`)
+
+      updateControls()
 
       await ensureOverlayGlobals()
 
@@ -356,15 +287,12 @@
         // Render overlay for initial frame.
         renderSpritespinOverlay({ frameIndex: 0 })
       } catch (e) {
-        // If SpriteSpin fails, keep the single-image viewer working.
+        // If SpriteSpin fails, keep the page usable.
         spritespinActive = false
       }
 
-      emptyEl.textContent = ""
-      show(0)
+      updateControls()
     } catch (e) {
-      emptyEl.style.display = "block"
-      emptyEl.textContent = "Failed to load ZIP"
       const msg = String(e?.message || e)
       const hint =
         msg.includes("Failed to fetch") || msg.includes("Network")
@@ -372,15 +300,13 @@
           : ""
       setStatus([msg, hint].filter(Boolean).join(" | "))
       updateControls()
-    } finally {
-      loadBtn.disabled = false
     }
   }
 
   // Auto-load ZIP on page load
   setTimeout(() => {
     try {
-      loadBtn.click()
+      loadZipAndInitSpriteSpin()
     } catch {
       // ignore
     }
