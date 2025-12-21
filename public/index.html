@@ -32,6 +32,7 @@
       <button id="renders-prev" type="button" disabled>&larr; Prev</button>
       <button id="renders-next" type="button" disabled>Next &rarr;</button>
       <button id="renders-play" type="button" disabled>Play</button>
+      <button id="spritespin-toggle-layers" type="button" disabled>Hide layers</button>
       <div id="renders-status" style="font-size: 12px; color: #374151;"></div>
     </div>
     <div style="margin-top: 10px; width: 100%; height: 520px; background: #f7f7f7; border: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: center; overflow: hidden;">
@@ -162,17 +163,19 @@
       const prevBtn = document.getElementById("renders-prev")
       const nextBtn = document.getElementById("renders-next")
       const playBtn = document.getElementById("renders-play")
+      const toggleLayersBtn = document.getElementById("spritespin-toggle-layers")
       const statusEl = document.getElementById("renders-status")
       const imgEl = document.getElementById("renders-img")
       const emptyEl = document.getElementById("renders-empty")
 
-      if (!loadBtn || !prevBtn || !nextBtn || !playBtn || !statusEl || !imgEl || !emptyEl) return
+      if (!loadBtn || !prevBtn || !nextBtn || !playBtn || !toggleLayersBtn || !statusEl || !imgEl || !emptyEl) return
 
       const spritespinContainer = document.getElementById("spritespin-viewer")
       let spritespinOverlaySvg = null
       const spritespinOverlayPaths = new Map()
       let spritespinSelectedLayer = null
       let spritespinCurrentFrameIndex = 0
+      let spritespinLayersEnabled = true
 
       function ensureSpritespinOverlaySvg(overlays) {
         if (!spritespinContainer || !overlays) return null
@@ -202,6 +205,7 @@
       }
 
       function renderSpritespinOverlay({ angleDeg, frameIndex }) {
+        if (!spritespinLayersEnabled) return
         const overlays = window.__layerOverlaysData
         const layerColors = window.__layerToColor
         if (!overlays || !layerColors) return
@@ -303,7 +307,20 @@
         prevBtn.disabled = !has
         nextBtn.disabled = !has
         playBtn.disabled = !has
+        toggleLayersBtn.disabled = !has
         playBtn.textContent = playTimer ? "Pause" : "Play"
+        toggleLayersBtn.textContent = spritespinLayersEnabled ? "Hide layers" : "Show layers"
+      }
+
+      toggleLayersBtn.onclick = () => {
+        spritespinLayersEnabled = !spritespinLayersEnabled
+        if (spritespinOverlaySvg) {
+          spritespinOverlaySvg.style.display = spritespinLayersEnabled ? "block" : "none"
+        }
+        if (spritespinLayersEnabled) {
+          renderSpritespinOverlay({ frameIndex: spritespinCurrentFrameIndex })
+        }
+        updateControls()
       }
 
       function show(i) {
@@ -452,7 +469,10 @@
               animate: false,
               onFrameChanged: function (e, data) {
                 const frame = Number(data?.frame) || 0
-                renderSpritespinOverlay({ frameIndex: frame })
+                spritespinCurrentFrameIndex = frame
+                if (spritespinLayersEnabled) {
+                  renderSpritespinOverlay({ frameIndex: frame })
+                }
               }
             })
 
