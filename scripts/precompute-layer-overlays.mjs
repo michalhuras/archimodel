@@ -161,7 +161,10 @@ function parseArgs(argv) {
     apartments: null,
     out: null,
     width: 1280,
-    height: 1280
+    height: 1280,
+    fovDeg: null,
+    near: null,
+    far: null
   }
 
   for (let i = 2; i < argv.length; i++) {
@@ -173,6 +176,9 @@ function parseArgs(argv) {
     else if (a === "--out") args.out = argv[++i]
     else if (a === "--width") args.width = Number(argv[++i])
     else if (a === "--height") args.height = Number(argv[++i])
+    else if (a === "--fovDeg") args.fovDeg = Number(argv[++i])
+    else if (a === "--near") args.near = Number(argv[++i])
+    else if (a === "--far") args.far = Number(argv[++i])
   }
 
   return args
@@ -203,11 +209,32 @@ function listCamerasFromFbx({ fbxPath }) {
     if (!m) continue
 
     const idx = m[1]
+    const baseName = `Corona_Camera${idx}`
     const targetName = `Corona_Camera${idx}Target`
     const targetObj = byName.get(targetName)
 
     o.updateMatrixWorld(true)
     const pos = new THREE.Vector3().setFromMatrixPosition(o.matrixWorld)
+
+    let camLike = null
+    // 1) Prefer a real camera under the Corona group (if exported that way)
+    o.traverse((child) => {
+      if (camLike) return
+      if (!child || !child.isCamera) return
+      camLike = child
+    })
+    // 2) If not found, look for any isCamera node with a matching base name
+    if (!camLike) {
+      for (const n of nodes) {
+        if (!n || !n.isCamera) continue
+        const nn = String(n.name || "")
+        if (!nn) continue
+        if (nn === baseName || nn.startsWith(baseName) || nn.includes(baseName)) {
+          camLike = n
+          break
+        }
+      }
+    }
 
     let target = null
     if (targetObj) {
@@ -216,15 +243,17 @@ function listCamerasFromFbx({ fbxPath }) {
     }
 
     // FOV is not guaranteed on Group nodes.
-    const fov = Number.isFinite(o.fov) ? o.fov : null
-    coronaCameras.push({ name, order: Number(idx), position: pos, target, fov })
+    const fov = Number.isFinite(o.fov) ? o.fov : Number.isFinite(camLike?.fov) ? camLike.fov : null
+    const near = Number.isFinite(o.near) ? o.near : Number.isFinite(camLike?.near) ? camLike.near : null
+    const far = Number.isFinite(o.far) ? o.far : Number.isFinite(camLike?.far) ? camLike.far : null
+    coronaCameras.push({ name, order: Number(idx), position: pos, target, fov, near, far })
   }
 
   coronaCameras.sort((a, b) => (a.order === b.order ? a.name.localeCompare(b.name) : a.order - b.order))
   process.stdout.write(`FBX traverse: nodes=${nodes.length}, coronaCameras=${coronaCameras.length}\n`)
   for (const c of coronaCameras.slice(0, 40)) {
     process.stdout.write(
-      ` - corona camera: name='${c.name}' pos=${c.position.x},${c.position.y},${c.position.z} target=${c.target ? `${c.target.x},${c.target.y},${c.target.z}` : "(none)"}\n`
+      ` - corona camera: name='${c.name}' fov=${c.fov ?? "(null)"} near=${c.near ?? "(null)"} far=${c.far ?? "(null)"} pos=${c.position.x},${c.position.y},${c.position.z} target=${c.target ? `${c.target.x},${c.target.y},${c.target.z}` : "(none)"}\n`
     )
   }
 
@@ -280,9 +309,12 @@ function listCameraCandidatesFromFbx({ fbxPath }) {
 }
 
 function makePerspectiveFromAnyCamera({ srcCam, w, h }) {
-  const fov = Number.isFinite(srcCam?.fov) ? srcCam.fov : Number.isFinite(srcCam?.fovDeg) ? srcCam.fovDeg : 45
-  const near = Number.isFinite(srcCam?.near) ? srcCam.near : 0.1
-  const far = Number.isFinite(srcCam?.far) ? srcCam.far : 5000
+  const fov =
+    Number.isFinite(srcCam?.fov) ? srcCam.fov : Number.isFinite(srcCam?.fovDeg) ? srcCam.fovDeg : Number.isFinite(srcCam?.__overrideFovDeg) ? srcCam.__overrideFovDeg : 45
+  const near =
+    Number.isFinite(srcCam?.near) ? srcCam.near : Number.isFinite(srcCam?.__overrideNear) ? srcCam.__overrideNear : 0.1
+  const far =
+    Number.isFinite(srcCam?.far) ? srcCam.far : Number.isFinite(srcCam?.__overrideFar) ? srcCam.__overrideFar : 5000
   const cam = new THREE.PerspectiveCamera(fov, w / h, near, far)
 
   if (srcCam && srcCam.isObject3D) {
@@ -461,10 +493,20 @@ async function main() {
 
   const frames = {}
   for (let i = 0; i < cameras.length; i++) {
-    const camera = makePerspectiveFromAnyCamera({ srcCam: cameras[i], w, h })
+    const srcCam = cameras[i]
+    if (Number.isFinite(args.fovDeg)) srcCam.__overrideFovDeg = args.fovDeg
+    if (Number.isFinite(args.near)) srcCam.__overrideNear = args.near
+    if (Number.isFinite(args.far)) srcCam.__overrideFar = args.far
+
+    const camera = makePerspectiveFromAnyCamera({ srcCam, w, h })
     // Corona cameras: if a Target exists, prefer lookAt(target); otherwise keep orientation.
     if (cameras[i] && cameras[i].target) {
       camera.lookAt(cameras[i].target)
+    }
+    if (i < 3) {
+      process.stdout.write(
+        `Using camera frame ${i}: fov=${camera.fov} aspect=${camera.aspect} near=${camera.near} far=${camera.far}\n`
+      )
     }
     camera.updateMatrixWorld(true)
 
