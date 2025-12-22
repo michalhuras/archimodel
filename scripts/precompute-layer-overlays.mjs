@@ -61,6 +61,39 @@ function pathFromHull(hull) {
   return d
 }
 
+function snapSharedHorizontalEdge(perLayer, aName, bName, { edgeTol = 0.75, snapTol = 2 } = {}) {
+  const a = perLayer?.[aName]
+  const b = perLayer?.[bName]
+  const ha = a?.hull
+  const hb = b?.hull
+  if (!Array.isArray(ha) || !Array.isArray(hb) || ha.length < 2 || hb.length < 2) return
+
+  let aMaxY = -Infinity
+  for (const p of ha) aMaxY = Math.max(aMaxY, p.y)
+  let bMinY = Infinity
+  for (const p of hb) bMinY = Math.min(bMinY, p.y)
+
+  if (!Number.isFinite(aMaxY) || !Number.isFinite(bMinY)) return
+  if (Math.abs(aMaxY - bMinY) > snapTol) return
+
+  const aIdx = []
+  for (let i = 0; i < ha.length; i++) {
+    if (Math.abs(ha[i].y - aMaxY) <= edgeTol) aIdx.push(i)
+  }
+  const bIdx = []
+  for (let i = 0; i < hb.length; i++) {
+    if (Math.abs(hb[i].y - bMinY) <= edgeTol) bIdx.push(i)
+  }
+  if (!aIdx.length || !bIdx.length) return
+
+  const snapY = (aMaxY + bMinY) * 0.5
+  for (const i of aIdx) ha[i].y = snapY
+  for (const i of bIdx) hb[i].y = snapY
+
+  a.d = pathFromHull(ha)
+  b.d = pathFromHull(hb)
+}
+
 function findLayerNodes(root, layerName) {
   const matches = []
   root.traverse((node) => {
@@ -87,8 +120,17 @@ function findLayerNodes(root, layerName) {
   return filtered.length ? filtered : matches
 }
 
-function projectLayerPoints({ nodes, camera, w, h }) {
+function projectLayerPoints({ nodes, camera, w, h, debug }) {
   const pts = []
+  let triTested = 0
+  let triFront = 0
+  let visTested = 0
+  let visPassed = 0
+
+  const debugSamples = []
+
+  const raycaster = new THREE.Raycaster()
+  const tmpDir = new THREE.Vector3()
 
   for (const node of nodes) {
     node.traverse((desc) => {
@@ -112,6 +154,7 @@ function projectLayerPoints({ nodes, camera, w, h }) {
       const center = new THREE.Vector3()
       const camDir = new THREE.Vector3()
       const v2 = new THREE.Vector3()
+      const triCenter = new THREE.Vector3()
 
       for (let t = 0; t < triCount; t += triStep) {
         const i0 = idx ? idx.getX(t * 3 + 0) : t * 3 + 0
@@ -134,8 +177,46 @@ function projectLayerPoints({ nodes, camera, w, h }) {
         center.copy(a).add(b).add(c).multiplyScalar(1 / 3)
         camDir.copy(camera.position).sub(center).normalize()
 
-        const facing = Math.abs(n.dot(camDir))
+        triTested++
+        const facing = n.dot(camDir)
         if (facing < 0.25) continue
+        triFront++
+
+        // Occlusion sampling: raycast from camera to triangle center.
+        // If the closest hit is significantly closer than the triangle center, the point is occluded.
+        if (visTested < 80) {
+          triCenter.copy(a).add(b).add(c).multiplyScalar(1 / 3)
+          tmpDir.copy(triCenter).sub(camera.position)
+          const dist = tmpDir.length()
+          if (dist > 1e-6) {
+            const eps = Number.isFinite(globalThis.__occlusionEps)
+              ? globalThis.__occlusionEps
+              : Number.isFinite(globalThis.__sceneDiag)
+                ? Math.max(2e-2, globalThis.__sceneDiag * 1e-3)
+                : 2e-2
+            tmpDir.multiplyScalar(1 / dist)
+            raycaster.set(camera.position, tmpDir)
+            raycaster.near = 0
+            raycaster.far = dist + eps
+            const meshes = globalThis.__occluderMeshes || globalThis.__raycastMeshes || []
+            const hits = raycaster.intersectObjects(meshes, true)
+            // Count the sample even if we get no hits, otherwise the layer can slip through
+            // the visTested>=10 gate.
+            visTested++
+
+            // Interpret occlusion by comparing distances:
+            // - if closest occluder hit is significantly closer than the tested point -> occluded
+            // - if no hit, or hit is roughly at the same distance -> visible
+            const hit0 = hits && hits.length ? hits[0] : null
+            const hitDist = hit0 ? hit0.distance : null
+            const hitName = hit0 ? String(hit0.object?.name || "") : "(none)"
+            const visible = !hit0 || hitDist >= dist - eps
+            if (visible) visPassed++
+            if (debug?.enabled && debugSamples.length < (debug.maxSamples || 12)) {
+              debugSamples.push({ hit: hitName, hitDist, dist, eps, visible })
+            }
+          }
+        }
 
         const verts = [a, b, c]
         for (const vv of verts) {
@@ -150,7 +231,7 @@ function projectLayerPoints({ nodes, camera, w, h }) {
     })
   }
 
-  return pts
+  return { pts, triTested, triFront, visTested, visPassed, debugSamples }
 }
 
 function parseArgs(argv) {
@@ -158,6 +239,10 @@ function parseArgs(argv) {
     model: null,
     camerasFbx: null,
     listCameraCandidates: false,
+    debugVisibility: false,
+    debugFrame: null,
+    debugLayer: null,
+    occlusionEps: null,
     apartments: null,
     out: null,
     width: 1280,
@@ -172,6 +257,10 @@ function parseArgs(argv) {
     if (a === "--model") args.model = argv[++i]
     else if (a === "--camerasFbx") args.camerasFbx = argv[++i]
     else if (a === "--listCameraCandidates") args.listCameraCandidates = true
+    else if (a === "--debugVisibility") args.debugVisibility = true
+    else if (a === "--debugFrame") args.debugFrame = Number(argv[++i])
+    else if (a === "--debugLayer") args.debugLayer = String(argv[++i])
+    else if (a === "--occlusionEps") args.occlusionEps = Number(argv[++i])
     else if (a === "--apartments") args.apartments = argv[++i]
     else if (a === "--out") args.out = argv[++i]
     else if (a === "--width") args.width = Number(argv[++i])
@@ -182,6 +271,39 @@ function parseArgs(argv) {
   }
 
   return args
+}
+
+function objectPath(o) {
+  const parts = []
+  let cur = o
+  while (cur) {
+    const n = String(cur.name || "")
+    if (n) parts.push(n)
+    cur = cur.parent
+  }
+  return parts.reverse().join("/") || "(unnamed)"
+}
+
+function dumpHierarchy(root, { maxDepth = 6, maxChildren = 80 } = {}) {
+  const lines = []
+  function rec(node, depth) {
+    if (!node) return
+    if (depth > maxDepth) return
+    const indent = "  ".repeat(depth)
+    const name = String(node.name || "") || "(unnamed)"
+    const type = String(node.type || "")
+    const tag = node.isMesh ? "[MESH]" : "[NODE]"
+    lines.push(`${indent}${tag} ${name} type=${type} children=${node.children?.length || 0}`)
+    const children = Array.isArray(node.children) ? node.children : []
+    for (let i = 0; i < Math.min(children.length, maxChildren); i++) {
+      rec(children[i], depth + 1)
+    }
+    if (children.length > maxChildren) {
+      lines.push(`${indent}  ... (${children.length - maxChildren} more child(ren))`)
+    }
+  }
+  rec(root, 0)
+  return lines
 }
 
 function listCamerasFromFbx({ fbxPath }) {
@@ -420,7 +542,70 @@ async function main() {
 
   root.updateMatrixWorld(true)
 
+  // Precompute mesh list for raycasting occlusion tests.
+  // Stored on globalThis to avoid threading this through every function call.
+  const raycastMeshes = []
+  const occluderMeshes = []
+  root.traverse((o) => {
+    if (o && o.isMesh) {
+      // Raycaster respects material.side. Ensure we can ray-hit both front and back faces
+      // for occlusion testing from arbitrary camera angles.
+      const mats = Array.isArray(o.material) ? o.material : o.material ? [o.material] : []
+      for (const m of mats) {
+        if (m && m.side !== THREE.DoubleSide) m.side = THREE.DoubleSide
+      }
+      raycastMeshes.push(o)
+
+      // For occlusion we only want "real" occluders (e.g. the main building mass),
+      // not the layer meshes themselves, otherwise self-layer geometry will dominate hits.
+      const nm = String(o.name || "")
+      const isLayer = /^kondygnacja_\d+$/i.test(nm)
+      if (!isLayer) occluderMeshes.push(o)
+    }
+  })
+  globalThis.__raycastMeshes = raycastMeshes
+  globalThis.__occluderMeshes = occluderMeshes
+
+  if (Number.isFinite(args.occlusionEps)) {
+    globalThis.__occlusionEps = args.occlusionEps
+  } else {
+    globalThis.__occlusionEps = null
+  }
+
+  if (args.debugVisibility) {
+    process.stdout.write("\n=== VISIBILITY DEBUG (OBJ ROOT HIERARCHY) ===\n")
+    for (const l of dumpHierarchy(root, { maxDepth: 7, maxChildren: 120 })) {
+      process.stdout.write(l + "\n")
+    }
+
+    process.stdout.write("\n=== VISIBILITY DEBUG (RAYCAST MESHES) ===\n")
+    process.stdout.write(`raycastMeshes: ${raycastMeshes.length}\n`)
+    for (const m of raycastMeshes.slice(0, 300)) {
+      const mats = Array.isArray(m.material) ? m.material : m.material ? [m.material] : []
+      const sides = mats.map((mm) => (mm ? mm.side : "(null)")).join(",")
+      const matNames = mats.map((mm) => (mm ? String(mm.name || "") : "(null)")).join(",")
+      process.stdout.write(
+        ` - ${objectPath(m)} type=${m.type} matSide=[${sides}] matName=[${matNames}]\n`
+      )
+    }
+    if (raycastMeshes.length > 300) {
+      process.stdout.write(` ... (${raycastMeshes.length - 300} more mesh(es))\n`)
+    }
+
+    process.stdout.write("\n=== VISIBILITY DEBUG (OCCLUDER MESHES) ===\n")
+    process.stdout.write(`occluderMeshes: ${occluderMeshes.length}\n`)
+    for (const m of occluderMeshes.slice(0, 300)) {
+      process.stdout.write(` - ${objectPath(m)}\n`)
+    }
+    if (occluderMeshes.length > 300) {
+      process.stdout.write(` ... (${occluderMeshes.length - 300} more mesh(es))\n`)
+    }
+    process.stdout.write("=== END VISIBILITY DEBUG ===\n\n")
+  }
+
   const box = new THREE.Box3().setFromObject(root)
+  // Scene scale hint used to pick a reasonable occlusion epsilon.
+  globalThis.__sceneDiag = box.min.distanceTo(box.max)
   const center = box.getCenter(new THREE.Vector3())
 
   const target = center
@@ -514,12 +699,41 @@ async function main() {
 
     const perLayer = {}
     for (const [layerName, nodes] of layers.entries()) {
-      const pts = projectLayerPoints({ nodes, camera, w, h })
+      const debugEnabled = Number.isFinite(args.debugFrame) && args.debugFrame === i && (!args.debugLayer || args.debugLayer === layerName)
+      const r = projectLayerPoints({ nodes, camera, w, h, debug: debugEnabled ? { enabled: true, maxSamples: 12 } : null })
+      const pts = r?.pts || []
+      const triTested = Number(r?.triTested) || 0
+      const triFront = Number(r?.triFront) || 0
+      const visTested = Number(r?.visTested) || 0
+      const visPassed = Number(r?.visPassed) || 0
+
+      if (debugEnabled) {
+        process.stdout.write(
+          `\n[debugFrame=${i}] layer='${layerName}' triTested=${triTested} triFront=${triFront} frontRatio=${triTested ? (triFront / triTested).toFixed(3) : "(n/a)"} visTested=${visTested} visPassed=${visPassed} visRatio=${visTested ? (visPassed / visTested).toFixed(3) : "(n/a)"}\n`
+        )
+        for (const s of r?.debugSamples || []) {
+          process.stdout.write(
+            `  hit=${s.hit} hitDist=${s.hitDist ?? "(null)"} dist=${s.dist} eps=${s.eps ?? "(null)"} visible=${
+              s.visible ?? "(null)"
+            }\n`
+          )
+        }
+      }
+
+      // If almost nothing is front-facing, skip the whole layer for this frame.
+      if (triTested > 0 && triFront / triTested < 0.12) continue
+      // If most sampled points are occluded by other geometry, skip the whole layer.
+      const minVisTested = Math.min(10, Math.max(3, triFront))
+      if (visTested >= minVisTested && visPassed / visTested < 0.08) continue
+
       if (pts.length < 3) continue
       const hull = convexHull(pts)
       const d = pathFromHull(hull)
       if (d) perLayer[layerName] = { d, hull }
     }
+
+    snapSharedHorizontalEdge(perLayer, "kondygnacja_01", "kondygnacja_02") // TODO delete
+    snapSharedHorizontalEdge(perLayer, "kondygnacja_02", "kondygnacja_03") // TODO delete
 
     frames[String(i)] = perLayer
   }

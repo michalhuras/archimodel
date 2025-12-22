@@ -8,11 +8,13 @@
 * _.mtl_ -
 * _.obj_ - 
 
-
 ## Preprocessing
 
 ### Calculate layer possiotions from fbx file
 
 ```bash
-node scripts/precompute-layer-overlays.mjs --camerasFbx "data/paczka - makieta 3d/test-makieta-fbx.fbx" --fovDeg 73
+node scripts/precompute-layer-overlays.mjs --camerasFbx "data/paczka - makieta 3d/test-makieta-fbx.fbx" --fovDeg 73 --occlusionEps 2
 ```
+
+* occlusionEps - visibility of layers
+* fovDeg - field of view of camera (match layer with rendered images)
