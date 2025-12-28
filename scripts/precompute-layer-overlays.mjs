@@ -61,39 +61,6 @@ function pathFromHull(hull) {
   return d
 }
 
-function snapSharedHorizontalEdge(perLayer, aName, bName, { edgeTol = 0.75, snapTol = 2 } = {}) {
-  const a = perLayer?.[aName]
-  const b = perLayer?.[bName]
-  const ha = a?.hull
-  const hb = b?.hull
-  if (!Array.isArray(ha) || !Array.isArray(hb) || ha.length < 2 || hb.length < 2) return
-
-  let aMaxY = -Infinity
-  for (const p of ha) aMaxY = Math.max(aMaxY, p.y)
-  let bMinY = Infinity
-  for (const p of hb) bMinY = Math.min(bMinY, p.y)
-
-  if (!Number.isFinite(aMaxY) || !Number.isFinite(bMinY)) return
-  if (Math.abs(aMaxY - bMinY) > snapTol) return
-
-  const aIdx = []
-  for (let i = 0; i < ha.length; i++) {
-    if (Math.abs(ha[i].y - aMaxY) <= edgeTol) aIdx.push(i)
-  }
-  const bIdx = []
-  for (let i = 0; i < hb.length; i++) {
-    if (Math.abs(hb[i].y - bMinY) <= edgeTol) bIdx.push(i)
-  }
-  if (!aIdx.length || !bIdx.length) return
-
-  const snapY = (aMaxY + bMinY) * 0.5
-  for (const i of aIdx) ha[i].y = snapY
-  for (const i of bIdx) hb[i].y = snapY
-
-  a.d = pathFromHull(ha)
-  b.d = pathFromHull(hb)
-}
-
 function findLayerNodes(root, layerName) {
   const matches = []
   root.traverse((node) => {
@@ -731,9 +698,6 @@ async function main() {
       const d = pathFromHull(hull)
       if (d) perLayer[layerName] = { d, hull }
     }
-
-    snapSharedHorizontalEdge(perLayer, "kondygnacja_01", "kondygnacja_02") // TODO delete
-    snapSharedHorizontalEdge(perLayer, "kondygnacja_02", "kondygnacja_03") // TODO delete
 
     frames[String(i)] = perLayer
   }
