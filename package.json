@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "generate:version": "node scripts/generate-version.mjs",
     "precompute:overlays": "node scripts/precompute-layer-overlays.mjs",
+    "build": "npm run generate:version && npm run precompute:overlays",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {

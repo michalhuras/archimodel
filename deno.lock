@@ -11,7 +11,8 @@
   "workspace": {
     "packageJson": {
       "dependencies": [
-        "npm:netlify-lambda@^2.0.16"
+        "npm:netlify-lambda@0.4",
+        "npm:three@0.160"
       ]
     }
   }

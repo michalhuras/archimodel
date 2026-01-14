@@ -4,6 +4,9 @@
 # Project directories
 data/
 
+# Generated files
+public/version.json
+
 .env
 .env.*
 !.env.example
