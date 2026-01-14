@@ -16,7 +16,7 @@ try {
     fullVersion: `${gitHash} (${gitDate})`
   };
 
-  const outputPath = join(__dirname, '..', 'public', 'version.json');
+  const outputPath = join(__dirname, '..', 'src', 'version.json');
   writeFileSync(outputPath, JSON.stringify(versionInfo, null, 2));
   
   console.log(`Version info generated: ${versionInfo.fullVersion}`);
@@ -29,6 +29,6 @@ try {
     fullVersion: 'dev (local)'
   };
   
-  const outputPath = join(__dirname, '..', 'public', 'version.json');
+  const outputPath = join(__dirname, '..', 'src', 'version.json');
   writeFileSync(outputPath, JSON.stringify(fallbackVersion, null, 2));
 }

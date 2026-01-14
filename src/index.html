@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>My Project</title>
+  <script src="https://unpkg.com/fflate@0.8.2/umd/index.js"></script>
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/spritespin@4.0.11/release/spritespin.css" />
+  <script src="https://unpkg.com/spritespin@4.0.11/release/spritespin.js"></script>
+</head>
+<body>
+  <h2>Apartments</h2>
+  <div id="apartments">Loading...</div>
+
+  <h2>Renders</h2>
+  <div id="renders" style="width: 100%; max-width: 1100px; border: 1px solid #ddd; padding: 10px 12px; box-sizing: border-box;">
+    <div style="margin-top: 10px; width: 100%;">
+      <div style="font-weight: 600; margin-bottom: 6px;">360 view (SpriteSpin)</div>
+      <div id="spritespin-viewer" style="width: 100%; max-width: 520px; aspect-ratio: 1 / 1; margin: 0 auto; background: #f7f7f7; border: 1px solid #e5e7eb;"></div>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+      <button id="spritespin-toggle-layers" type="button" disabled>Hide layers</button>
+      <div id="renders-status" style="font-size: 12px; color: #374151;"></div>
+    </div>
+
+  </div>
+
+  <button onclick="logout()">Logout</button>
+
+  <footer style="margin-top: 40px; padding: 20px 0; text-align: center; font-size: 11px; color: #6b7280;">
+    <div>v<span class="app-version">...</span></div>
+  </footer>
+
+</body>
+</html>

@@ -6,7 +6,13 @@
   "scripts": {
     "generate:version": "node scripts/generate-version.mjs",
     "precompute:overlays": "node scripts/precompute-layer-overlays.mjs",
-    "build": "npm run generate:version && npm run precompute:overlays",
+    "webpack:dev": "webpack --mode development",
+    "webpack:build": "webpack --mode production",
+    "webpack:serve": "webpack serve --mode development",
+    "prebuild": "npm run generate:version",
+    "build": "npm run prebuild && npm run webpack:build",
+    "build:full": "npm run generate:version && npm run precompute:overlays && npm run webpack:build",
+    "dev": "npm run webpack:serve",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -24,5 +30,14 @@
   "dependencies": {
     "netlify-lambda": "^0.4.0",
     "three": "^0.160.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.28.6",
+    "@babel/preset-env": "^7.28.6",
+    "babel-loader": "^10.0.0",
+    "copy-webpack-plugin": "^13.0.1",
+    "html-webpack-plugin": "^5.6.5",
+    "webpack": "^5.104.1",
+    "webpack-cli": "^6.0.1"
   }
 }

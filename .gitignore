@@ -6,6 +6,7 @@ data/
 
 # Generated files
 public/version.json
+src/version.json
 
 .env
 .env.*
@@ -23,6 +24,7 @@ pnpm-debug.log*
 dist/
 build/
 coverage/
+public/version.json
 
 .cache/
 .parcel-cache/
