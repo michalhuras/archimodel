@@ -68,11 +68,6 @@ module.exports = {
           from: 'src/version.json',
           to: 'version.json',
           noErrorOnMissing: true
-        },
-        {
-          from: 'netlify',
-          to: '../netlify',
-          noErrorOnMissing: true
         }
       ]
     })
