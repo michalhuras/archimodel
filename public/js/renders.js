@@ -175,7 +175,6 @@
   function updateControls() {
     const has = entries.length > 0
     toggleLayersBtn.disabled = !has
-    toggleLayersBtn.textContent = spritespinLayersEnabled ? "Hide layers" : "Show layers"
   }
 
   toggleLayersBtn.onclick = () => {

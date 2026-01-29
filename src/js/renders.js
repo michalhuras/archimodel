@@ -173,7 +173,10 @@ export function initRenders() {
   function updateControls() {
     const has = entries.length > 0
     toggleLayersBtn.disabled = !has
-    toggleLayersBtn.textContent = spritespinLayersEnabled ? "Hide layers" : "Show layers"
+    const iconImg = toggleLayersBtn.querySelector("img")
+    if (iconImg) {
+      iconImg.src = spritespinLayersEnabled ? "/assets/icons/hide.svg" : "/assets/icons/show.svg"
+    }
   }
 
   toggleLayersBtn.onclick = () => {

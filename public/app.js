@@ -261,8 +261,6 @@ loadApartments()
     nextBtn.disabled = !has
     playBtn.disabled = !has
     toggleLayersBtn.disabled = !has
-    playBtn.textContent = playTimer ? "Pause" : "Play"
-    toggleLayersBtn.textContent = spritespinLayersEnabled ? "Hide layers" : "Show layers"
   }
 
   toggleLayersBtn.onclick = () => {
