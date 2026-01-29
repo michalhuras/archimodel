@@ -68,6 +68,11 @@ module.exports = {
           from: 'src/version.json',
           to: 'version.json',
           noErrorOnMissing: true
+        },
+        {
+          from: 'src/assets/icons',
+          to: 'assets/icons',
+          noErrorOnMissing: true
         }
       ]
     })
