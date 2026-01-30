@@ -1,4 +1,5 @@
 import { normalizeLayerName, colorForState, fetchJson, highlightApartmentsByLayer } from './utils.js';
+import { getHiddenLayers, setOnFilterChange } from './apartments.js';
 
 const ZIP_BASE_URL = "https://pub-bd8c5d894c334dbfa30341d1d4208c04.r2.dev"
 const ZIP_FILE_NAME = "render_webp.zip"
@@ -91,6 +92,8 @@ export function initRenders() {
     spritespinCurrentFrameIndex = clamped
     const perLayer = framesObj[String(clamped)] || {}
 
+    const hiddenLayers = getHiddenLayers()
+
     for (const [, p] of spritespinOverlayPaths.entries()) {
       p.style.display = "none"
     }
@@ -98,6 +101,7 @@ export function initRenders() {
     for (const [layerName, col] of layerColors.entries()) {
       const shape = perLayer[layerName]
       if (!shape || !shape.d) continue
+      if (hiddenLayers.includes(layerName)) continue
 
       let pathEl = spritespinOverlayPaths.get(layerName)
       if (!pathEl) {
@@ -298,6 +302,10 @@ export function initRenders() {
       updateControls()
     }
   }
+
+  setOnFilterChange(() => {
+    renderSpritespinOverlay({ frameIndex: spritespinCurrentFrameIndex })
+  })
 
   setTimeout(() => {
     try {
