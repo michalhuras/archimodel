@@ -150,6 +150,7 @@ function createRangeEditor(field, onUpdate) {
     e.stopPropagation()
     filter.min = bounds.min
     filter.max = bounds.max
+    expandedRangeField = null
     onUpdate()
     if (onFilterChangeCallback) onFilterChangeCallback()
   })
