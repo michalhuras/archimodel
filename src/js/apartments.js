@@ -65,11 +65,21 @@ export function setOnFilterChange(callback) {
 }
 
 export function getHiddenLayers() {
-  if (!hideSold) return []
+  const visibleApartments = getFilteredApartments()
+  const visibleLayers = new Set(visibleApartments.map(a => normalizeLayerName(a.layer_name)).filter(Boolean))
+  
   return apartmentsData
-    .filter(a => a.state?.toLowerCase() === 'sold')
     .map(a => normalizeLayerName(a.layer_name))
-    .filter(Boolean)
+    .filter(layer => layer && !visibleLayers.has(layer))
+}
+
+function getFilteredApartments() {
+  let filtered = apartmentsData
+  if (hideSold) {
+    filtered = filtered.filter(a => a.state?.toLowerCase() !== 'sold')
+  }
+  filtered = applyRangeFilters(filtered)
+  return filtered
 }
 
 function sortApartments(apartments) {
