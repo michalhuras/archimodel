@@ -350,10 +350,90 @@ function renderTable(el, apartments) {
     row.querySelectorAll('td').forEach(td => {
       td.style.cssText = 'border: 1px solid #e5e7eb; padding: 8px; text-align: center;'
     })
+    row.style.cursor = 'pointer'
+    row.addEventListener('click', () => openApartmentModal(a))
     table.appendChild(row)
   }
 
   el.appendChild(table)
+}
+
+function openApartmentModal(apartment) {
+  const modal = document.createElement('div')
+  modal.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px;'
+
+  const dialog = document.createElement('div')
+  dialog.style.cssText = 'background: #fff; border-radius: 12px; max-width: 800px; width: 100%; max-height: 90vh; overflow-y: auto; position: relative; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);'
+
+  const closeBtn = document.createElement('button')
+  closeBtn.innerHTML = '×'
+  closeBtn.style.cssText = 'position: absolute; top: 16px; right: 16px; width: 32px; height: 32px; padding: 0; font-size: 24px; line-height: 1; background: #f3f4f6; color: #6b7280; border: none; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 150ms ease;'
+  closeBtn.addEventListener('mouseenter', () => { closeBtn.style.background = '#e5e7eb'; closeBtn.style.color = '#374151' })
+  closeBtn.addEventListener('mouseleave', () => { closeBtn.style.background = '#f3f4f6'; closeBtn.style.color = '#6b7280' })
+
+  const content = document.createElement('div')
+  content.style.cssText = 'display: flex; flex-direction: column; gap: 24px; padding: 32px;'
+
+  const header = document.createElement('div')
+  header.innerHTML = `<h2 style="margin: 0; font-size: 24px; font-weight: 700; color: #111827;">${apartment.name || 'Apartment Details'}</h2>`
+
+  const imageSection = document.createElement('div')
+  imageSection.style.cssText = 'display: flex; justify-content: center; background: #f9fafb; border-radius: 8px; padding: 24px; min-height: 200px; align-items: center;'
+  imageSection.innerHTML = `
+    <div style="text-align: center; color: #6b7280;">
+      <div style="font-size: 48px; margin-bottom: 12px;">📷</div>
+      <div>Apartment Image</div>
+      <div style="font-size: 12px; margin-top: 4px;">Image placeholder for ${apartment.name}</div>
+    </div>
+  `
+
+  const detailsSection = document.createElement('div')
+  detailsSection.style.cssText = 'display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;'
+  
+  const details = [
+    { label: 'Name', value: apartment.name || '-' },
+    { label: 'Price', value: apartment.price ? `${apartment.price.toLocaleString()} zł` : '-' },
+    { label: 'Price/m²', value: apartment.price_per_square_metre ? `${apartment.price_per_square_metre.toLocaleString()} zł/m²` : '-' },
+    { label: 'Area', value: apartment.area ? `${apartment.area} m²` : '-' },
+    { label: 'Floor', value: apartment.floor || '-' },
+    { label: 'Status', value: apartment.state || '-' },
+    { label: 'Layer', value: apartment.layer_name || '-' }
+  ]
+
+  details.forEach(detail => {
+    const item = document.createElement('div')
+    item.style.cssText = 'padding: 12px; background: #f9fafb; border-radius: 6px;'
+    item.innerHTML = `
+      <div style="font-size: 12px; color: #6b7280; margin-bottom: 4px;">${detail.label}</div>
+      <div style="font-size: 16px; font-weight: 600; color: #111827;">${detail.value}</div>
+    `
+    detailsSection.appendChild(item)
+  })
+
+  content.appendChild(header)
+  content.appendChild(imageSection)
+  content.appendChild(detailsSection)
+
+  dialog.appendChild(closeBtn)
+  dialog.appendChild(content)
+  modal.appendChild(dialog)
+
+  const closeModal = () => {
+    document.body.style.overflow = ''
+    document.body.removeChild(modal)
+  }
+
+  closeBtn.addEventListener('click', closeModal)
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) closeModal()
+  })
+  modal.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeModal()
+  })
+
+  document.body.style.overflow = 'hidden'
+  document.body.appendChild(modal)
+  modal.focus()
 }
 
 export async function loadApartments() {
