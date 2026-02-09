@@ -51,6 +51,12 @@ export function initRenders() {
   let spritespinCurrentFrameIndex = 0
   let spritespinLayersEnabled = true
 
+  window.addEventListener("apartment-modal-closed", () => {
+    spritespinSelectedLayer = null
+    highlightApartmentsByLayer("")
+    renderSpritespinOverlay({ frameIndex: spritespinCurrentFrameIndex })
+  })
+
   function ensureSpritespinOverlaySvg(overlays) {
     if (!spritespinContainer || !overlays) return null
     spritespinContainer.style.position = "relative"

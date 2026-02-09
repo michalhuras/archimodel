@@ -1,4 +1,4 @@
-import { normalizeLayerName } from './utils.js';
+import { normalizeLayerName, highlightApartmentsByLayer } from './utils.js';
 
 let hideSold = false
 let apartmentsData = []
@@ -429,6 +429,8 @@ function openApartmentModal(apartment) {
   const closeModal = () => {
     document.body.style.overflow = ''
     document.body.removeChild(modal)
+    highlightApartmentsByLayer('')
+    window.dispatchEvent(new CustomEvent('apartment-modal-closed'))
   }
 
   closeBtn.addEventListener('click', closeModal)
