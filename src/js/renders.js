@@ -111,6 +111,18 @@ export function initRenders() {
         pathEl.style.cursor = "pointer"
         pathEl.style.pointerEvents = "auto"
 
+        pathEl.addEventListener("mouseenter", () => {
+          highlightApartmentsByLayer(layerName)
+        })
+
+        pathEl.addEventListener("mouseleave", () => {
+          if (spritespinSelectedLayer) {
+            highlightApartmentsByLayer(spritespinSelectedLayer)
+          } else {
+            highlightApartmentsByLayer("")
+          }
+        })
+
         pathEl.addEventListener("click", () => {
           spritespinSelectedLayer = layerName
           highlightApartmentsByLayer(layerName)
