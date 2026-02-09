@@ -40,6 +40,8 @@ export function initRenders() {
   const toggleLayersBtn = document.getElementById("spritespin-toggle-layers")
   const statusEl = document.getElementById("renders-status")
 
+  const compassImg = document.getElementById("spritespin-compass")
+
   if (!toggleLayersBtn || !statusEl) return
 
   const spritespinContainer = document.getElementById("spritespin-viewer")
@@ -135,6 +137,16 @@ export function initRenders() {
   let playTimer = null
   const urlCache = new Map()
   let spritespinActive = false
+
+  function updateCompass(frameIndex) {
+    if (!compassImg) return
+    const total = entries.length || 0
+    if (total <= 0) return
+    const clamped = Math.max(0, Math.min(total - 1, Number(frameIndex) || 0))
+    const angleDeg = (clamped / total) * 360
+    compassImg.style.transformOrigin = "50% 50%"
+    compassImg.style.transform = `rotate(${-angleDeg}deg)`
+  }
 
   function setStatus(msg) {
     const base = msg || ""
@@ -280,12 +292,14 @@ export function initRenders() {
           onFrameChanged: function (e, data) {
             const frame = Number(data?.frame) || 0
             spritespinCurrentFrameIndex = frame
+            updateCompass(frame)
             if (spritespinLayersEnabled) {
               renderSpritespinOverlay({ frameIndex: frame })
             }
           }
         })
 
+        updateCompass(0)
         renderSpritespinOverlay({ frameIndex: 0 })
       } catch (e) {
         spritespinActive = false
