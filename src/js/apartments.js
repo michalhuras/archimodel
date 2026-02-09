@@ -67,10 +67,18 @@ export function setOnFilterChange(callback) {
 export function getHiddenLayers() {
   const visibleApartments = getFilteredApartments()
   const visibleLayers = new Set(visibleApartments.map(a => normalizeLayerName(a.layer_name)).filter(Boolean))
-  
+
   return apartmentsData
     .map(a => normalizeLayerName(a.layer_name))
     .filter(layer => layer && !visibleLayers.has(layer))
+}
+
+export function openApartmentDetailsByLayer(layerName) {
+  const key = normalizeLayerName(layerName)
+  if (!key) return
+  const apartment = apartmentsData.find(a => normalizeLayerName(a.layer_name) === key)
+  if (!apartment) return
+  openApartmentModal(apartment)
 }
 
 function getFilteredApartments() {

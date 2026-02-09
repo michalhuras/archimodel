@@ -1,5 +1,5 @@
 import { normalizeLayerName, colorForState, fetchJson, highlightApartmentsByLayer } from './utils.js';
-import { getHiddenLayers, setOnFilterChange } from './apartments.js';
+import { getHiddenLayers, setOnFilterChange, openApartmentDetailsByLayer } from './apartments.js';
 
 const ZIP_BASE_URL = "https://pub-bd8c5d894c334dbfa30341d1d4208c04.r2.dev"
 const ZIP_FILE_NAME = "render_webp.zip"
@@ -125,7 +125,7 @@ export function initRenders() {
 
         pathEl.addEventListener("click", () => {
           spritespinSelectedLayer = layerName
-          highlightApartmentsByLayer(layerName)
+          openApartmentDetailsByLayer(layerName)
           renderSpritespinOverlay({ frameIndex: spritespinCurrentFrameIndex })
         })
 
