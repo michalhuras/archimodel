@@ -48,12 +48,23 @@ export function initRenders() {
   let spritespinOverlaySvg = null
   const spritespinOverlayPaths = new Map()
   let spritespinSelectedLayer = null
+  let spritespinHoveredLayer = null
   let spritespinCurrentFrameIndex = 0
   let spritespinLayersEnabled = true
 
   window.addEventListener("apartment-modal-closed", () => {
     spritespinSelectedLayer = null
     highlightApartmentsByLayer("")
+    renderSpritespinOverlay({ frameIndex: spritespinCurrentFrameIndex })
+  })
+
+  window.addEventListener("apartment-row-hover", (e) => {
+    spritespinHoveredLayer = e?.detail?.layerName || null
+    renderSpritespinOverlay({ frameIndex: spritespinCurrentFrameIndex })
+  })
+
+  window.addEventListener("apartment-row-hover-end", () => {
+    spritespinHoveredLayer = null
     renderSpritespinOverlay({ frameIndex: spritespinCurrentFrameIndex })
   })
 
@@ -141,10 +152,11 @@ export function initRenders() {
 
       pathEl.setAttribute("d", shape.d)
       pathEl.setAttribute("fill", col)
-      pathEl.setAttribute("fill-opacity", "0.22")
+      const isActive = spritespinSelectedLayer === layerName || spritespinHoveredLayer === layerName
+      pathEl.setAttribute("fill-opacity", isActive ? "0.32" : "0.22")
       pathEl.setAttribute("stroke", col)
       pathEl.setAttribute("stroke-opacity", "0.9")
-      pathEl.setAttribute("stroke-width", spritespinSelectedLayer === layerName ? "4" : "2")
+      pathEl.setAttribute("stroke-width", isActive ? "4" : "2")
       pathEl.style.display = "block"
     }
   }

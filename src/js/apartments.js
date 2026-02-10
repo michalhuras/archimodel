@@ -359,6 +359,15 @@ function renderTable(el, apartments) {
       td.style.cssText = 'border: 1px solid #e5e7eb; padding: 8px; text-align: center;'
     })
     row.style.cursor = 'pointer'
+    row.addEventListener('mouseenter', () => {
+      if (!layer) return
+      highlightApartmentsByLayer(layer)
+      window.dispatchEvent(new CustomEvent('apartment-row-hover', { detail: { layerName: layer } }))
+    })
+    row.addEventListener('mouseleave', () => {
+      highlightApartmentsByLayer('')
+      window.dispatchEvent(new CustomEvent('apartment-row-hover-end'))
+    })
     row.addEventListener('click', () => openApartmentModal(a))
     table.appendChild(row)
   }
