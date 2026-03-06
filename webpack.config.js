@@ -6,8 +6,7 @@ module.exports = {
   mode: process.env.NODE_ENV === 'production' ? 'production' : 'development',
   target: 'web',
   entry: {
-    main: './src/js/main.js',
-    login: './src/js/login.js'
+    main: './src/js/main.js'
   },
   output: {
     path: path.resolve(__dirname, 'dist'),
@@ -51,11 +50,6 @@ module.exports = {
       template: './src/index.html',
       filename: 'index.html',
       chunks: ['main']
-    }),
-    new HtmlWebpackPlugin({
-      template: './src/login.html',
-      filename: 'login.html',
-      chunks: ['login']
     }),
     new CopyWebpackPlugin({
       patterns: [
