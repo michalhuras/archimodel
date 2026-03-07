@@ -295,7 +295,7 @@ function renderTable(el, apartments) {
 
   const toggleBtn = document.createElement('button')
   toggleBtn.textContent = hideSold ? t('filters.showSold') : t('filters.hideSold')
-  toggleBtn.style.cssText = 'padding: 8px 16px; font-size: 13px; background: #fff; border: 1px solid #e5e7eb; border-radius: 6px; cursor: pointer;'
+  toggleBtn.style.cssText = 'padding: 8px 16px; font-size: 13px; background: #fff; border: 1px solid #e5e7eb; border-radius: 6px; cursor: pointer; min-width: 160px;'
   toggleBtn.addEventListener('click', () => {
     hideSold = !hideSold
     renderTable(el, apartmentsData)
@@ -311,10 +311,23 @@ function renderTable(el, apartments) {
     const currentOpt = currentSort ? SORT_OPTIONS.find(o => o.key === currentSort) : null
     sortBtn.textContent = currentOpt ? t(currentOpt.labelKey) : t('filters.sort')
   }
-  sortBtn.style.cssText = 'padding: 8px 16px; font-size: 13px; background: #fff; border: 1px solid #e5e7eb; border-radius: 6px; cursor: pointer;'
+  sortBtn.style.cssText = 'padding: 8px 16px; font-size: 13px; background: #fff; border: 1px solid #e5e7eb; border-radius: 6px; cursor: pointer; min-width: 140px;'
 
   const dropdown = document.createElement('div')
   dropdown.style.cssText = 'display: none; position: absolute; top: 100%; left: 0; margin-top: 4px; background: #fff; border: 1px solid #e5e7eb; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); z-index: 100; min-width: 140px;'
+
+  const noneItem = document.createElement('div')
+  noneItem.textContent = t('filters.sortNone')
+  noneItem.style.cssText = 'padding: 8px 12px; font-size: 13px; cursor: pointer; border-bottom: 1px solid #f0f0f0;'
+  if (!currentSort) noneItem.style.background = '#eff6ff'
+  noneItem.addEventListener('mouseenter', () => noneItem.style.background = '#f5f5f5')
+  noneItem.addEventListener('mouseleave', () => noneItem.style.background = currentSort ? '#fff' : '#eff6ff')
+  noneItem.addEventListener('click', () => {
+    currentSort = null
+    dropdown.style.display = 'none'
+    renderTable(el, apartmentsData)
+  })
+  dropdown.appendChild(noneItem)
 
   for (const opt of SORT_OPTIONS) {
     const item = document.createElement('div')
@@ -336,7 +349,11 @@ function renderTable(el, apartments) {
     dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none'
   })
 
-  document.addEventListener('click', () => dropdown.style.display = 'none', { once: true })
+  document.addEventListener('click', (e) => {
+    if (dropdown.style.display !== 'none' && !sortWrapper.contains(e.target)) {
+      dropdown.style.display = 'none'
+    }
+  })
 
   sortWrapper.appendChild(sortBtn)
   sortWrapper.appendChild(dropdown)

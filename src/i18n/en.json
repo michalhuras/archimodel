@@ -9,7 +9,10 @@
   "filters.hideSold": "Hide sold",
   "filters.showSold": "Show sold",
   "filters.sort": "Sort",
+  "filters.sortNone": "-none-",
   "filters.reset": "Reset filter",
+
+  "errors.requestFailed": "Request failed",
 
   "range.price": "Price",
   "range.pricePerM2": "Price/m²",
