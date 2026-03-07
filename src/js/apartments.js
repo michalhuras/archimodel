@@ -1,4 +1,5 @@
 import { normalizeLayerName, highlightApartmentsByLayer } from './utils.js';
+import { t } from './i18n.js';
 
 let hideSold = false
 let apartmentsData = []
@@ -21,23 +22,23 @@ function calculateStep(min, max, decimals) {
 }
 
 const SORT_OPTIONS = [
-  { key: 'price_asc', label: 'Price ↑', field: 'price', dir: 1 },
-  { key: 'price_desc', label: 'Price ↓', field: 'price', dir: -1 },
-  { key: 'price_m2_asc', label: 'Price/m² ↑', field: 'price_per_square_metre', dir: 1 },
-  { key: 'price_m2_desc', label: 'Price/m² ↓', field: 'price_per_square_metre', dir: -1 },
-  { key: 'area_asc', label: 'Area ↑', field: 'area', dir: 1 },
-  { key: 'area_desc', label: 'Area ↓', field: 'area', dir: -1 },
-  { key: 'floor_asc', label: 'Floor ↑', field: 'floor', dir: 1 },
-  { key: 'floor_desc', label: 'Floor ↓', field: 'floor', dir: -1 },
-  { key: 'name_asc', label: 'Name A-Z', field: 'name', dir: 1 },
-  { key: 'name_desc', label: 'Name Z-A', field: 'name', dir: -1 }
+  { key: 'price_asc', labelKey: 'sort.priceAsc', field: 'price', dir: 1 },
+  { key: 'price_desc', labelKey: 'sort.priceDesc', field: 'price', dir: -1 },
+  { key: 'price_m2_asc', labelKey: 'sort.pricePerM2Asc', field: 'price_per_square_metre', dir: 1 },
+  { key: 'price_m2_desc', labelKey: 'sort.pricePerM2Desc', field: 'price_per_square_metre', dir: -1 },
+  { key: 'area_asc', labelKey: 'sort.areaAsc', field: 'area', dir: 1 },
+  { key: 'area_desc', labelKey: 'sort.areaDesc', field: 'area', dir: -1 },
+  { key: 'floor_asc', labelKey: 'sort.floorAsc', field: 'floor', dir: 1 },
+  { key: 'floor_desc', labelKey: 'sort.floorDesc', field: 'floor', dir: -1 },
+  { key: 'name_asc', labelKey: 'sort.nameAsc', field: 'name', dir: 1 },
+  { key: 'name_desc', labelKey: 'sort.nameDesc', field: 'name', dir: -1 }
 ]
 
 const RANGE_FIELDS = [
-  { key: 'price', label: 'Price', unit: 'zł', decimals: 0 },
-  { key: 'price_per_square_metre', label: 'Price/m²', unit: 'zł/m²', decimals: 0 },
-  { key: 'area', label: 'Area', unit: 'm²', decimals: 2 },
-  { key: 'floor', label: 'Floor', unit: '', decimals: 0 }
+  { key: 'price', labelKey: 'range.price', unit: 'zł', decimals: 0 },
+  { key: 'price_per_square_metre', labelKey: 'range.pricePerM2', unit: 'zł/m²', decimals: 0 },
+  { key: 'area', labelKey: 'range.area', unit: 'm²', decimals: 2 },
+  { key: 'floor', labelKey: 'range.floor', unit: '', decimals: 0 }
 ]
 
 const rangeFilters = {}
@@ -138,7 +139,7 @@ function createRangeEditor(field, onUpdate) {
 
   const label = document.createElement('span')
   label.style.cssText = 'font-size: 13px; font-weight: 500; color: #374151;'
-  label.textContent = field.label
+  label.textContent = t(field.labelKey)
 
   const rightSide = document.createElement('div')
   rightSide.style.cssText = 'display: flex; align-items: center; gap: 8px;'
@@ -151,7 +152,7 @@ function createRangeEditor(field, onUpdate) {
   const resetBtn = document.createElement('button')
   resetBtn.innerHTML = '×'
   resetBtn.style.cssText = `display: ${isActive ? 'flex' : 'none'}; align-items: center; justify-content: center; width: 18px; height: 18px; padding: 0; font-size: 14px; line-height: 1; background: #ef4444; color: #fff; border: none; border-radius: 50%; cursor: pointer; transition: background 150ms ease;`
-  resetBtn.title = 'Reset filter'
+  resetBtn.title = t('filters.reset')
   resetBtn.addEventListener('mouseenter', () => resetBtn.style.background = '#dc2626')
   resetBtn.addEventListener('mouseleave', () => resetBtn.style.background = '#ef4444')
   resetBtn.addEventListener('click', (e) => {
@@ -293,7 +294,7 @@ function renderTable(el, apartments) {
   toolbar.style.cssText = 'display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap;'
 
   const toggleBtn = document.createElement('button')
-  toggleBtn.textContent = hideSold ? 'Show sold' : 'Hide sold'
+  toggleBtn.textContent = hideSold ? t('filters.showSold') : t('filters.hideSold')
   toggleBtn.style.cssText = 'padding: 8px 16px; font-size: 13px; background: #fff; border: 1px solid #e5e7eb; border-radius: 6px; cursor: pointer;'
   toggleBtn.addEventListener('click', () => {
     hideSold = !hideSold
@@ -306,7 +307,10 @@ function renderTable(el, apartments) {
   sortWrapper.style.cssText = 'position: relative;'
 
   const sortBtn = document.createElement('button')
-  sortBtn.textContent = currentSort ? SORT_OPTIONS.find(o => o.key === currentSort)?.label || 'Sort' : 'Sort'
+  {
+    const currentOpt = currentSort ? SORT_OPTIONS.find(o => o.key === currentSort) : null
+    sortBtn.textContent = currentOpt ? t(currentOpt.labelKey) : t('filters.sort')
+  }
   sortBtn.style.cssText = 'padding: 8px 16px; font-size: 13px; background: #fff; border: 1px solid #e5e7eb; border-radius: 6px; cursor: pointer;'
 
   const dropdown = document.createElement('div')
@@ -314,7 +318,7 @@ function renderTable(el, apartments) {
 
   for (const opt of SORT_OPTIONS) {
     const item = document.createElement('div')
-    item.textContent = opt.label
+    item.textContent = t(opt.labelKey)
     item.style.cssText = 'padding: 8px 12px; font-size: 13px; cursor: pointer; border-bottom: 1px solid #f0f0f0;'
     if (currentSort === opt.key) item.style.background = '#eff6ff'
     item.addEventListener('mouseenter', () => item.style.background = '#f5f5f5')
@@ -343,7 +347,7 @@ function renderTable(el, apartments) {
   table.style.cssText = 'width: 100%; border-collapse: collapse; font-size: 13px;'
 
   const header = document.createElement('tr')
-  header.innerHTML = '<th>Name</th><th>Price</th><th>Price/m²</th><th>Area</th><th>Floor</th><th>State</th><th>Layer</th>'
+  header.innerHTML = `<th>${t('table.name')}</th><th>${t('table.price')}</th><th>${t('table.pricePerM2')}</th><th>${t('table.area')}</th><th>${t('table.floor')}</th><th>${t('table.state')}</th><th>${t('table.layer')}</th>`
   header.querySelectorAll('th').forEach(th => {
     th.style.cssText = 'border: 1px solid #e5e7eb; padding: 8px; text-align: center; background: #f9fafb; font-weight: 600;'
   })
@@ -354,7 +358,8 @@ function renderTable(el, apartments) {
     const layer = normalizeLayerName(a.layer_name)
     if (layer) row.dataset.layer = layer
 
-    row.innerHTML = `<td>${a.name ?? ''}</td><td>${a.price ?? ''}</td><td>${a.price_per_square_metre ?? ''}</td><td>${a.area ?? ''}</td><td>${a.floor ?? ''}</td><td>${a.state ?? ''}</td><td>${a.layer_name ?? ''}</td>`
+    const stateKey = a.state ? `state.${a.state.toLowerCase()}` : ''
+    row.innerHTML = `<td>${a.name ?? ''}</td><td>${a.price ?? ''}</td><td>${a.price_per_square_metre ?? ''}</td><td>${a.area ?? ''}</td><td>${a.floor ?? ''}</td><td>${stateKey ? t(stateKey) : ''}</td><td>${a.layer_name ?? ''}</td>`
     row.querySelectorAll('td').forEach(td => {
       td.style.cssText = 'border: 1px solid #e5e7eb; padding: 8px; text-align: center;'
     })
@@ -392,29 +397,29 @@ function openApartmentModal(apartment) {
   content.style.cssText = 'display: flex; flex-direction: column; gap: 24px; padding: 32px;'
 
   const header = document.createElement('div')
-  header.innerHTML = `<h2 style="margin: 0; font-size: 24px; font-weight: 700; color: #111827;">${apartment.name || 'Apartment Details'}</h2>`
+  header.innerHTML = `<h2 style="margin: 0; font-size: 24px; font-weight: 700; color: #111827;">${apartment.name || t('modal.titleFallback')}</h2>`
 
   const imageSection = document.createElement('div')
   imageSection.style.cssText = 'display: flex; justify-content: center; background: #f9fafb; border-radius: 8px; padding: 24px; min-height: 200px; align-items: center;'
   imageSection.innerHTML = `
     <div style="text-align: center; color: #6b7280;">
       <div style="font-size: 48px; margin-bottom: 12px;">📷</div>
-      <div>Apartment Image</div>
-      <div style="font-size: 12px; margin-top: 4px;">Image placeholder for ${apartment.name}</div>
+      <div>${t('modal.imageTitle')}</div>
+      <div style="font-size: 12px; margin-top: 4px;">${t('modal.imagePlaceholder', { name: apartment.name || '' })}</div>
     </div>
   `
 
   const detailsSection = document.createElement('div')
   detailsSection.style.cssText = 'display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;'
-  
+
   const details = [
-    { label: 'Name', value: apartment.name || '-' },
-    { label: 'Price', value: apartment.price ? `${apartment.price.toLocaleString()} zł` : '-' },
-    { label: 'Price/m²', value: apartment.price_per_square_metre ? `${apartment.price_per_square_metre.toLocaleString()} zł/m²` : '-' },
-    { label: 'Area', value: apartment.area ? `${apartment.area} m²` : '-' },
-    { label: 'Floor', value: apartment.floor || '-' },
-    { label: 'Status', value: apartment.state || '-' },
-    { label: 'Layer', value: apartment.layer_name || '-' }
+    { label: t('table.name'), value: apartment.name || '-' },
+    { label: t('table.price'), value: apartment.price ? `${apartment.price.toLocaleString()} zł` : '-' },
+    { label: t('table.pricePerM2'), value: apartment.price_per_square_metre ? `${apartment.price_per_square_metre.toLocaleString()} zł/m²` : '-' },
+    { label: t('table.area'), value: apartment.area ? `${apartment.area} m²` : '-' },
+    { label: t('table.floor'), value: apartment.floor || '-' },
+    { label: t('table.state'), value: apartment.state ? t(`state.${apartment.state.toLowerCase()}`) : '-' },
+    { label: t('table.layer'), value: apartment.layer_name || '-' }
   ]
 
   details.forEach(detail => {
@@ -460,17 +465,17 @@ export async function loadApartments() {
 
   try {
     const res = await fetch('/.netlify/functions/apartment')
-    if (!res.ok) throw new Error('Request failed')
+    if (!res.ok) throw new Error(t('errors.requestFailed'))
     const apartments = await res.json()
 
     if (!Array.isArray(apartments) || apartments.length === 0) {
-      el.textContent = 'No apartments'
+      el.textContent = t('apartments.none')
       return
     }
 
     apartmentsData = apartments
     renderTable(el, apartments)
   } catch (e) {
-    el.textContent = 'Failed to load apartments'
+    el.textContent = t('errors.requestFailed')
   }
 }

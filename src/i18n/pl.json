@@ -1,0 +1,50 @@
+{
+  "app.logoAlt": "Logo",
+  "renders.layersAlt": "warstwy",
+  "renders.compassAlt": "kompas",
+
+  "apartments.loading": "Ładowanie...",
+  "apartments.none": "Brak mieszkań",
+
+  "filters.hideSold": "Schowaj sprzedane",
+  "filters.showSold": "Pokaż sprzedane",
+  "filters.sort": "Sortuj",
+  "filters.reset": "Resetuj filtr",
+
+  "range.price": "Cena",
+  "range.pricePerM2": "Cena/m²",
+  "range.area": "Powierzchnia",
+  "range.floor": "Piętro",
+
+  "sort.priceAsc": "Cena ↑",
+  "sort.priceDesc": "Cena ↓",
+  "sort.pricePerM2Asc": "Cena/m² ↑",
+  "sort.pricePerM2Desc": "Cena/m² ↓",
+  "sort.areaAsc": "Powierzchnia ↑",
+  "sort.areaDesc": "Powierzchnia ↓",
+  "sort.floorAsc": "Piętro ↑",
+  "sort.floorDesc": "Piętro ↓",
+  "sort.nameAsc": "Nazwa A-Z",
+  "sort.nameDesc": "Nazwa Z-A",
+
+  "table.name": "Nazwa",
+  "table.price": "Cena",
+  "table.pricePerM2": "Cena/m²",
+  "table.area": "Powierzchnia",
+  "table.floor": "Piętro",
+  "table.state": "Status",
+  "table.layer": "Warstwa",
+
+  "modal.titleFallback": "Szczegóły mieszkania",
+  "modal.imageTitle": "Zdjęcie mieszkania",
+  "modal.imagePlaceholder": "Miejsce na zdjęcie dla {{name}}",
+
+  "renders.downloading": "Pobieranie: {{file}}",
+  "renders.unzipping": "Rozpakowywanie...",
+  "renders.loadedFrames": "Załadowano {{count}} klatek",
+  "renders.noImages": "Brak obrazów w ZIP",
+
+  "state.selling": "na sprzedaż",
+  "state.reserved": "zarezerwowane",
+  "state.sold": "sprzedane"
+}

@@ -1,5 +1,6 @@
 import { normalizeLayerName, colorForState, fetchJson, highlightApartmentsByLayer } from './utils.js';
 import { getHiddenLayers, setOnFilterChange, openApartmentDetailsByLayer } from './apartments.js';
+import { t } from './i18n.js';
 
 const ZIP_BASE_URL = "https://pub-bd8c5d894c334dbfa30341d1d4208c04.r2.dev"
 const ZIP_FILE_NAME = "render_webp.zip"
@@ -258,7 +259,7 @@ export function initRenders() {
 
       entries = []
       idx = 0
-      setStatus(`Downloading: ${ZIP_FILE_NAME}`)
+      setStatus(t('renders.downloading', { file: ZIP_FILE_NAME }))
       updateControls()
 
       const res = await fetch(ZIP_URL)
@@ -268,10 +269,10 @@ export function initRenders() {
       const u8 = new Uint8Array(buf)
 
       if (!window.fflate?.unzipSync) {
-        throw new Error("ZIP library not loaded")
+        throw new Error(t('errors.requestFailed'))
       }
 
-      setStatus("Unzipping...")
+      setStatus(t('renders.unzipping'))
       await new Promise((r) => setTimeout(r, 0))
       const files = window.fflate.unzipSync(u8)
 
@@ -285,12 +286,12 @@ export function initRenders() {
 
       entries = list
       if (!entries.length) {
-        setStatus("No images in ZIP")
+        setStatus(t('renders.noImages'))
         updateControls()
         return
       }
 
-      setStatus(`Loaded ${entries.length} frames`)
+      setStatus(t('renders.loadedFrames', { count: entries.length }))
 
       updateControls()
 

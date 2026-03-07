@@ -1,0 +1,50 @@
+{
+  "app.logoAlt": "Logo",
+  "renders.layersAlt": "layers",
+  "renders.compassAlt": "compass",
+
+  "apartments.loading": "Loading...",
+  "apartments.none": "No apartments",
+
+  "filters.hideSold": "Hide sold",
+  "filters.showSold": "Show sold",
+  "filters.sort": "Sort",
+  "filters.reset": "Reset filter",
+
+  "range.price": "Price",
+  "range.pricePerM2": "Price/m²",
+  "range.area": "Area",
+  "range.floor": "Floor",
+
+  "sort.priceAsc": "Price ↑",
+  "sort.priceDesc": "Price ↓",
+  "sort.pricePerM2Asc": "Price/m² ↑",
+  "sort.pricePerM2Desc": "Price/m² ↓",
+  "sort.areaAsc": "Area ↑",
+  "sort.areaDesc": "Area ↓",
+  "sort.floorAsc": "Floor ↑",
+  "sort.floorDesc": "Floor ↓",
+  "sort.nameAsc": "Name A-Z",
+  "sort.nameDesc": "Name Z-A",
+
+  "table.name": "Name",
+  "table.price": "Price",
+  "table.pricePerM2": "Price/m²",
+  "table.area": "Area",
+  "table.floor": "Floor",
+  "table.state": "State",
+  "table.layer": "Layer",
+
+  "modal.titleFallback": "Apartment details",
+  "modal.imageTitle": "Apartment Image",
+  "modal.imagePlaceholder": "Image placeholder for {{name}}",
+
+  "renders.downloading": "Downloading: {{file}}",
+  "renders.unzipping": "Unzipping...",
+  "renders.loadedFrames": "Loaded {{count}} frames",
+  "renders.noImages": "No images in ZIP",
+
+  "state.selling": "selling",
+  "state.reserved": "reserved",
+  "state.sold": "sold"
+}
