@@ -347,7 +347,7 @@ function renderTable(el, apartments) {
   table.style.cssText = 'width: 100%; border-collapse: collapse; font-size: 13px;'
 
   const header = document.createElement('tr')
-  header.innerHTML = `<th>${t('table.name')}</th><th>${t('table.price')}</th><th>${t('table.pricePerM2')}</th><th>${t('table.area')}</th><th>${t('table.floor')}</th><th>${t('table.state')}</th><th>${t('table.layer')}</th>`
+  header.innerHTML = `<th>${t('table.name')}</th><th>${t('table.price')}</th><th>${t('table.pricePerM2')}</th><th>${t('table.area')}</th><th>${t('table.floor')}</th><th>${t('table.state')}</th>`
   header.querySelectorAll('th').forEach(th => {
     th.style.cssText = 'border: 1px solid #e5e7eb; padding: 8px; text-align: center; background: #f9fafb; font-weight: 600;'
   })
@@ -359,7 +359,7 @@ function renderTable(el, apartments) {
     if (layer) row.dataset.layer = layer
 
     const stateKey = a.state ? `state.${a.state.toLowerCase()}` : ''
-    row.innerHTML = `<td>${a.name ?? ''}</td><td>${a.price ?? ''}</td><td>${a.price_per_square_metre ?? ''}</td><td>${a.area ?? ''}</td><td>${a.floor ?? ''}</td><td>${stateKey ? t(stateKey) : ''}</td><td>${a.layer_name ?? ''}</td>`
+    row.innerHTML = `<td>${a.name ?? ''}</td><td>${a.price ?? ''}</td><td>${a.price_per_square_metre ?? ''}</td><td>${a.area ?? ''}</td><td>${a.floor ?? ''}</td><td>${stateKey ? t(stateKey) : ''}</td>`
     row.querySelectorAll('td').forEach(td => {
       td.style.cssText = 'border: 1px solid #e5e7eb; padding: 8px; text-align: center;'
     })
@@ -418,8 +418,7 @@ function openApartmentModal(apartment) {
     { label: t('table.pricePerM2'), value: apartment.price_per_square_metre ? `${apartment.price_per_square_metre.toLocaleString()} zł/m²` : '-' },
     { label: t('table.area'), value: apartment.area ? `${apartment.area} m²` : '-' },
     { label: t('table.floor'), value: apartment.floor || '-' },
-    { label: t('table.state'), value: apartment.state ? t(`state.${apartment.state.toLowerCase()}`) : '-' },
-    { label: t('table.layer'), value: apartment.layer_name || '-' }
+    { label: t('table.state'), value: apartment.state ? t(`state.${apartment.state.toLowerCase()}`) : '-' }
   ]
 
   details.forEach(detail => {

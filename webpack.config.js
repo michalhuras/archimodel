@@ -59,6 +59,11 @@ module.exports = {
           noErrorOnMissing: true
         },
         {
+          from: 'src/i18n',
+          to: 'i18n',
+          noErrorOnMissing: true
+        },
+        {
           from: 'src/version.json',
           to: 'version.json',
           noErrorOnMissing: true

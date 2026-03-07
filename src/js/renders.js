@@ -39,11 +39,10 @@ async function ensureOverlayGlobals() {
 
 export function initRenders() {
   const toggleLayersBtn = document.getElementById("spritespin-toggle-layers")
-  const statusEl = document.getElementById("renders-status")
 
   const compassImg = document.getElementById("spritespin-compass")
 
-  if (!toggleLayersBtn || !statusEl) return
+  if (!toggleLayersBtn) return
 
   const spritespinContainer = document.getElementById("spritespin-viewer")
   let spritespinOverlaySvg = null
@@ -179,12 +178,6 @@ export function initRenders() {
     compassImg.style.transform = `rotate(${-angleDeg}deg)`
   }
 
-  function setStatus(msg) {
-    const base = msg || ""
-    const dims = currentDims ? ` (${currentDims.w}×${currentDims.h})` : ""
-    statusEl.textContent = base + dims
-  }
-
   function isImageName(name) {
     return /\.(webp|png|jpe?g|gif)$/i.test(String(name || ""))
   }
@@ -259,7 +252,6 @@ export function initRenders() {
 
       entries = []
       idx = 0
-      setStatus(t('renders.downloading', { file: ZIP_FILE_NAME }))
       updateControls()
 
       const res = await fetch(ZIP_URL)
@@ -272,7 +264,6 @@ export function initRenders() {
         throw new Error(t('errors.requestFailed'))
       }
 
-      setStatus(t('renders.unzipping'))
       await new Promise((r) => setTimeout(r, 0))
       const files = window.fflate.unzipSync(u8)
 
@@ -286,12 +277,9 @@ export function initRenders() {
 
       entries = list
       if (!entries.length) {
-        setStatus(t('renders.noImages'))
         updateControls()
         return
       }
-
-      setStatus(t('renders.loadedFrames', { count: entries.length }))
 
       updateControls()
 
@@ -337,13 +325,7 @@ export function initRenders() {
       }
 
       updateControls()
-    } catch (e) {
-      const msg = String(e?.message || e)
-      const hint =
-        msg.includes("Failed to fetch") || msg.includes("Network")
-          ? "Hint: open the proxy endpoint directly to see the upstream error: /.netlify/functions/renders-zip"
-          : ""
-      setStatus([msg, hint].filter(Boolean).join(" | "))
+    } catch {
       updateControls()
     }
   }
