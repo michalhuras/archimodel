@@ -59,20 +59,25 @@ module.exports = {
           noErrorOnMissing: true
         },
         {
+          from: 'src/assets/icons',
+          to: 'assets/icons',
+          noErrorOnMissing: true
+        },
+        {
           from: 'src/i18n',
           to: 'i18n',
           noErrorOnMissing: true
+        },
+        {
+          from: 'src/style.css',
+          to: 'style.css',
+          noErrorOnMissing: false
         },
         {
           from: 'src/version.json',
           to: 'version.json',
           noErrorOnMissing: true
         },
-        {
-          from: 'src/assets/icons',
-          to: 'assets/icons',
-          noErrorOnMissing: true
-        }
       ]
     })
   ],
