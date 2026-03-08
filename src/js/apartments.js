@@ -352,9 +352,19 @@ function renderTable(el, apartments) {
   table.className = 'apartments-table'
 
   const header = document.createElement('tr')
-  header.innerHTML = `<th>${t('table.name')}</th><th>${t('table.price')}</th><th>${t('table.pricePerM2')}</th><th>${t('table.area')}</th><th>${t('table.floor')}</th><th>${t('table.state')}</th>`
-  header.querySelectorAll('th').forEach(th => {
+  const headerLabels = [
+    t('table.name'),
+    t('table.price'),
+    t('table.pricePerM2'),
+    t('table.area'),
+    t('table.floor'),
+    t('table.state')
+  ]
+  headerLabels.forEach(label => {
+    const th = document.createElement('th')
+    th.textContent = label
     th.className = 'apartments-table-header'
+    header.appendChild(th)
   })
   table.appendChild(header)
 
@@ -364,9 +374,19 @@ function renderTable(el, apartments) {
     if (layer) row.dataset.layer = layer
 
     const stateKey = a.state ? `state.${a.state.toLowerCase()}` : ''
-    row.innerHTML = `<td>${a.name ?? ''}</td><td>${a.price ?? ''}</td><td>${a.price_per_square_metre ?? ''}</td><td>${a.area ?? ''}</td><td>${a.floor ?? ''}</td><td>${stateKey ? t(stateKey) : ''}</td>`
-    row.querySelectorAll('td').forEach(td => {
+    const cellValues = [
+      a.name ?? '',
+      a.price ?? '',
+      a.price_per_square_metre ?? '',
+      a.area ?? '',
+      a.floor ?? '',
+      stateKey ? t(stateKey) : ''
+    ]
+    cellValues.forEach(value => {
+      const td = document.createElement('td')
+      td.textContent = String(value)
       td.className = 'apartments-table-cell'
+      row.appendChild(td)
     })
     row.className = 'apartments-table-row'
     row.addEventListener('mouseenter', () => {
@@ -400,18 +420,28 @@ function openApartmentModal(apartment) {
   content.className = 'apartment-modal-content modal-content'
 
   const header = document.createElement('div')
-  header.innerHTML = `<h2 class="apartment-modal-title modal-title">${apartment.name || t('modal.titleFallback')}</h2>`
+  const title = document.createElement('h2')
+  title.className = 'apartment-modal-title modal-title'
+  title.textContent = apartment.name || t('modal.titleFallback')
+  header.appendChild(title)
 
   const imageSection = document.createElement('div')
   imageSection.className = 'apartment-modal-image-section modal-image-section'
   imageSection.className = 'apartment-modal-image-section'
-  imageSection.innerHTML = `
-    <div class="apartment-modal-image-placeholder">
-      <div class="apartment-modal-image-icon">📷</div>
-      <div>${t('modal.imageTitle')}</div>
-      <div class="apartment-modal-image-text">${t('modal.imagePlaceholder', { name: apartment.name || '' })}</div>
-    </div>
-  `
+  const imagePlaceholder = document.createElement('div')
+  imagePlaceholder.className = 'apartment-modal-image-placeholder'
+  const imageIcon = document.createElement('div')
+  imageIcon.className = 'apartment-modal-image-icon'
+  imageIcon.textContent = '📷'
+  const imageTitle = document.createElement('div')
+  imageTitle.textContent = t('modal.imageTitle')
+  const imageText = document.createElement('div')
+  imageText.className = 'apartment-modal-image-text'
+  imageText.textContent = t('modal.imagePlaceholder', { name: apartment.name || '' })
+  imagePlaceholder.appendChild(imageIcon)
+  imagePlaceholder.appendChild(imageTitle)
+  imagePlaceholder.appendChild(imageText)
+  imageSection.appendChild(imagePlaceholder)
 
   const detailsSection = document.createElement('div')
   detailsSection.className = 'apartment-modal-details-section'
@@ -428,10 +458,14 @@ function openApartmentModal(apartment) {
   details.forEach(detail => {
     const item = document.createElement('div')
     item.className = 'apartment-modal-detail-item'
-    item.innerHTML = `
-      <div class="apartment-modal-detail-label">${detail.label}</div>
-      <div class="apartment-modal-detail-value">${detail.value}</div>
-    `
+    const label = document.createElement('div')
+    label.className = 'apartment-modal-detail-label'
+    label.textContent = detail.label
+    const value = document.createElement('div')
+    value.className = 'apartment-modal-detail-value'
+    value.textContent = detail.value
+    item.appendChild(label)
+    item.appendChild(value)
     detailsSection.appendChild(item)
   })
 
