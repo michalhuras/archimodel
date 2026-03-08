@@ -24,7 +24,6 @@ export function highlightApartmentsByLayer(layerName) {
   const rows = document.querySelectorAll("#apartments table tr[data-layer]")
   for (const r of rows) {
     const match = key && r.dataset.layer === key
-    r.style.background = match ? "rgba(99, 102, 241, 0.18)" : ""
-    r.style.outline = match ? "2px solid rgba(99, 102, 241, 0.45)" : ""
+    r.classList.toggle('highlighted', match)
   }
 }

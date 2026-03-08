@@ -70,7 +70,7 @@ export function initRenders() {
 
   function ensureSpritespinOverlaySvg(overlays) {
     if (!spritespinContainer || !overlays) return null
-    spritespinContainer.style.position = "relative"
+    spritespinContainer.classList.add('spritespin-container')
 
     if (spritespinOverlaySvg) return spritespinOverlaySvg
 
@@ -78,13 +78,7 @@ export function initRenders() {
     svg.setAttribute("width", "100%")
     svg.setAttribute("height", "100%")
     svg.setAttribute("preserveAspectRatio", "xMidYMid meet")
-    svg.style.position = "absolute"
-    svg.style.left = "0"
-    svg.style.top = "0"
-    svg.style.width = "100%"
-    svg.style.height = "100%"
-    svg.style.pointerEvents = "none"
-    svg.style.zIndex = "5"
+    svg.classList.add('spritespin-overlay-svg')
 
     const w = overlays.width || 1100
     const h = overlays.height || 520
@@ -125,8 +119,7 @@ export function initRenders() {
       let pathEl = spritespinOverlayPaths.get(layerName)
       if (!pathEl) {
         pathEl = document.createElementNS("http://www.w3.org/2000/svg", "path")
-        pathEl.style.cursor = "pointer"
-        pathEl.style.pointerEvents = "auto"
+        pathEl.classList.add('spritespin-overlay-path')
 
         pathEl.addEventListener("mouseenter", () => {
           highlightApartmentsByLayer(layerName)
@@ -157,7 +150,8 @@ export function initRenders() {
       pathEl.setAttribute("stroke", col)
       pathEl.setAttribute("stroke-opacity", "0.9")
       pathEl.setAttribute("stroke-width", isActive ? "4" : "2")
-      pathEl.style.display = "block"
+      pathEl.classList.add('spritespin-overlay-path')
+      pathEl.style.display = 'block'
     }
   }
 
@@ -174,7 +168,7 @@ export function initRenders() {
     if (total <= 0) return
     const clamped = Math.max(0, Math.min(total - 1, Number(frameIndex) || 0))
     const angleDeg = (clamped / total) * 360
-    compassImg.style.transformOrigin = "50% 50%"
+    compassImg.classList.add('spritespin-compass')
     compassImg.style.transform = `rotate(${-angleDeg}deg)`
   }
 

@@ -130,31 +130,28 @@ function createRangeEditor(field, onUpdate) {
   const isExpanded = expandedRangeField === field.key
 
   const container = document.createElement('div')
-  container.style.cssText = 'margin-bottom: 4px;'
+  container.className = 'range-filter-container'
 
   const row = document.createElement('div')
-  row.style.cssText = `display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; background: ${isActive ? '#eff6ff' : '#fff'}; border: 1px solid ${isActive ? '#3b82f6' : '#e5e7eb'}; border-radius: 6px; cursor: pointer; transition: all 150ms ease;`
-  row.addEventListener('mouseenter', () => { if (!isExpanded) row.style.background = isActive ? '#dbeafe' : '#f9fafb' })
-  row.addEventListener('mouseleave', () => { if (!isExpanded) row.style.background = isActive ? '#eff6ff' : '#fff' })
+  row.className = `range-filter-row${isActive ? ' active' : ''}${isExpanded ? ' expanded' : ''}`
+  row.addEventListener('mouseenter', () => { if (!isExpanded) row.classList.add('hover') })
+  row.addEventListener('mouseleave', () => { if (!isExpanded) row.classList.remove('hover') })
 
   const label = document.createElement('span')
-  label.style.cssText = 'font-size: 13px; font-weight: 500; color: #374151;'
+  label.className = 'range-filter-label'
   label.textContent = t(field.labelKey)
 
   const rightSide = document.createElement('div')
-  rightSide.style.cssText = 'display: flex; align-items: center; gap: 8px;'
+  rightSide.className = 'range-filter-right-side'
 
   const rangeText = document.createElement('span')
   rangeText.className = 'range-text'
-  rangeText.style.cssText = 'font-size: 12px; color: #6b7280; font-family: monospace;'
   rangeText.textContent = `${formatValue(filter.min, field.decimals, '')} – ${formatValue(filter.max, field.decimals, field.unit)}`
 
   const resetBtn = document.createElement('button')
   resetBtn.innerHTML = '×'
-  resetBtn.style.cssText = `display: ${isActive ? 'flex' : 'none'}; align-items: center; justify-content: center; width: 18px; height: 18px; padding: 0; font-size: 14px; line-height: 1; background: #ef4444; color: #fff; border: none; border-radius: 50%; cursor: pointer; transition: background 150ms ease;`
+  resetBtn.className = `range-filter-reset-btn${isActive ? ' active' : ''}`
   resetBtn.title = t('filters.reset')
-  resetBtn.addEventListener('mouseenter', () => resetBtn.style.background = '#dc2626')
-  resetBtn.addEventListener('mouseleave', () => resetBtn.style.background = '#ef4444')
   resetBtn.addEventListener('click', (e) => {
     e.stopPropagation()
     filter.min = bounds.min
@@ -165,7 +162,7 @@ function createRangeEditor(field, onUpdate) {
   })
 
   const chevron = document.createElement('span')
-  chevron.style.cssText = 'font-size: 10px; color: #9ca3af; transition: transform 150ms ease;'
+  chevron.className = `range-filter-chevron${isExpanded ? ' expanded' : ''}`
   chevron.textContent = isExpanded ? '▾' : '▸'
 
   rightSide.appendChild(rangeText)
@@ -175,35 +172,25 @@ function createRangeEditor(field, onUpdate) {
   row.appendChild(rightSide)
 
   const editor = document.createElement('div')
-  editor.style.cssText = `overflow: hidden; max-height: ${isExpanded ? '80px' : '0'}; opacity: ${isExpanded ? '1' : '0'}; transition: max-height 200ms ease, opacity 150ms ease; background: #f9fafb; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 6px 6px; margin-top: -1px;`
+  editor.className = `range-filter-editor${isExpanded ? ' expanded' : ''}`
 
   const sliderContainer = document.createElement('div')
-  sliderContainer.style.cssText = 'padding: 12px 16px;'
+  sliderContainer.className = 'range-slider-container'
 
   const sliderWrapper = document.createElement('div')
-  sliderWrapper.style.cssText = 'position: relative; height: 20px;'
+  sliderWrapper.className = 'range-slider-wrapper'
 
   const sliderTrack = document.createElement('div')
-  sliderTrack.style.cssText = 'position: absolute; top: 50%; left: 0; right: 0; height: 4px; background: #e5e7eb; border-radius: 2px; transform: translateY(-50%);'
+  sliderTrack.className = 'range-slider-track'
 
   const sliderFill = document.createElement('div')
-  sliderFill.className = 'slider-fill'
+  sliderFill.className = 'slider-fill range-slider-fill'
   const fillLeft = ((filter.min - bounds.min) / (bounds.max - bounds.min)) * 100
   const fillRight = ((filter.max - bounds.min) / (bounds.max - bounds.min)) * 100
-  sliderFill.style.cssText = `position: absolute; top: 50%; height: 4px; background: #3b82f6; border-radius: 2px; transform: translateY(-50%); left: ${fillLeft}%; right: ${100 - fillRight}%;`
+  sliderFill.style.left = `${fillLeft}%`
+  sliderFill.style.right = `${100 - fillRight}%`
 
   const inputStyle = 'position: absolute; top: 0; left: 0; width: 100%; height: 100%; -webkit-appearance: none; appearance: none; background: transparent; pointer-events: none; outline: none;'
-  const thumbStyle = `
-    input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; background: #fff; border: 2px solid #3b82f6; border-radius: 50%; cursor: pointer; pointer-events: auto; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-    input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; background: #fff; border: 2px solid #3b82f6; border-radius: 50%; cursor: pointer; pointer-events: auto; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-  `
-
-  if (!document.getElementById('range-slider-styles')) {
-    const styleEl = document.createElement('style')
-    styleEl.id = 'range-slider-styles'
-    styleEl.textContent = thumbStyle
-    document.head.appendChild(styleEl)
-  }
 
   const minInput = document.createElement('input')
   minInput.type = 'range'
@@ -212,7 +199,8 @@ function createRangeEditor(field, onUpdate) {
   const step = calculateStep(bounds.min, bounds.max, field.decimals)
   minInput.step = step
   minInput.value = filter.min
-  minInput.style.cssText = inputStyle + 'z-index: 2;'
+  minInput.className = 'range-slider-input'
+  minInput.style.zIndex = '2'
 
   const maxInput = document.createElement('input')
   maxInput.type = 'range'
@@ -220,7 +208,8 @@ function createRangeEditor(field, onUpdate) {
   maxInput.max = bounds.max
   maxInput.step = step
   maxInput.value = filter.max
-  maxInput.style.cssText = inputStyle + 'z-index: 3;'
+  maxInput.className = 'range-slider-input'
+  maxInput.style.zIndex = '3'
 
   const updateSlider = () => {
     const minVal = parseFloat(minInput.value)
@@ -234,8 +223,7 @@ function createRangeEditor(field, onUpdate) {
     sliderFill.style.left = `${newFillLeft}%`
     sliderFill.style.right = `${100 - newFillRight}%`
     rangeText.textContent = `${formatValue(filter.min, field.decimals, '')} – ${formatValue(filter.max, field.decimals, field.unit)}`
-    row.style.background = isRangeActive(field.key) ? '#eff6ff' : '#fff'
-    row.style.borderColor = isRangeActive(field.key) ? '#3b82f6' : '#e5e7eb'
+    row.classList.toggle('active', isRangeActive(field.key))
   }
 
   minInput.addEventListener('input', () => { updateSlider(); debounceFilter(() => onUpdate()) })
@@ -248,7 +236,7 @@ function createRangeEditor(field, onUpdate) {
   sliderContainer.appendChild(sliderWrapper)
 
   const valuesRow = document.createElement('div')
-  valuesRow.style.cssText = 'display: flex; justify-content: space-between; font-size: 11px; color: #9ca3af; margin-top: 6px;'
+  valuesRow.className = 'range-values-row'
   valuesRow.innerHTML = `<span>${formatValue(bounds.min, field.decimals, '')}</span><span>${formatValue(bounds.max, field.decimals, field.unit)}</span>`
   sliderContainer.appendChild(valuesRow)
 
@@ -275,7 +263,7 @@ function renderTable(el, apartments) {
   el.innerHTML = ''
 
   const filtersSection = document.createElement('section')
-  filtersSection.style.cssText = 'margin-bottom: 12px;'
+  filtersSection.className = 'apartments-filters-section'
 
   for (const field of RANGE_FIELDS) {
     const editor = createRangeEditor(field, (isToggle) => {
@@ -291,11 +279,11 @@ function renderTable(el, apartments) {
   el.appendChild(filtersSection)
 
   const toolbar = document.createElement('div')
-  toolbar.style.cssText = 'display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap;'
+  toolbar.className = 'apartments-toolbar'
 
   const toggleBtn = document.createElement('button')
   toggleBtn.textContent = hideSold ? t('filters.showSold') : t('filters.hideSold')
-  toggleBtn.style.cssText = 'padding: 8px 16px; font-size: 13px; background: #fff; border: 1px solid #e5e7eb; border-radius: 6px; cursor: pointer; min-width: 160px;'
+  toggleBtn.className = 'apartments-toggle-btn'
   toggleBtn.addEventListener('click', () => {
     hideSold = !hideSold
     renderTable(el, apartmentsData)
@@ -304,22 +292,22 @@ function renderTable(el, apartments) {
   toolbar.appendChild(toggleBtn)
 
   const sortWrapper = document.createElement('div')
-  sortWrapper.style.cssText = 'position: relative;'
+  sortWrapper.className = 'apartments-sort-wrapper'
 
   const sortBtn = document.createElement('button')
   {
     const currentOpt = currentSort ? SORT_OPTIONS.find(o => o.key === currentSort) : null
     sortBtn.textContent = currentOpt ? t(currentOpt.labelKey) : t('filters.sort')
   }
-  sortBtn.style.cssText = 'padding: 8px 16px; font-size: 13px; background: #fff; border: 1px solid #e5e7eb; border-radius: 6px; cursor: pointer; min-width: 140px;'
+  sortBtn.className = 'apartments-sort-btn'
 
   const dropdown = document.createElement('div')
-  dropdown.style.cssText = 'display: none; position: absolute; top: 100%; left: 0; margin-top: 4px; background: #fff; border: 1px solid #e5e7eb; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); z-index: 100; min-width: 140px;'
+  dropdown.className = 'apartments-sort-dropdown'
 
   const noneItem = document.createElement('div')
   noneItem.textContent = t('filters.sortNone')
-  noneItem.style.cssText = 'padding: 8px 12px; font-size: 13px; cursor: pointer; border-bottom: 1px solid #f0f0f0;'
-  if (!currentSort) noneItem.style.background = '#eff6ff'
+  noneItem.className = 'apartments-sort-item'
+  if (!currentSort) noneItem.classList.add('active')
   noneItem.addEventListener('mouseenter', () => noneItem.style.background = '#f5f5f5')
   noneItem.addEventListener('mouseleave', () => noneItem.style.background = currentSort ? '#fff' : '#eff6ff')
   noneItem.addEventListener('click', () => {
@@ -332,8 +320,8 @@ function renderTable(el, apartments) {
   for (const opt of SORT_OPTIONS) {
     const item = document.createElement('div')
     item.textContent = t(opt.labelKey)
-    item.style.cssText = 'padding: 8px 12px; font-size: 13px; cursor: pointer; border-bottom: 1px solid #f0f0f0;'
-    if (currentSort === opt.key) item.style.background = '#eff6ff'
+    item.className = 'apartments-sort-item'
+    if (currentSort === opt.key) item.classList.add('active')
     item.addEventListener('mouseenter', () => item.style.background = '#f5f5f5')
     item.addEventListener('mouseleave', () => item.style.background = currentSort === opt.key ? '#eff6ff' : '#fff')
     item.addEventListener('click', () => {
@@ -346,12 +334,12 @@ function renderTable(el, apartments) {
 
   sortBtn.addEventListener('click', (e) => {
     e.stopPropagation()
-    dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none'
+    dropdown.classList.toggle('show', dropdown.style.display !== 'none')
   })
 
   document.addEventListener('click', (e) => {
-    if (dropdown.style.display !== 'none' && !sortWrapper.contains(e.target)) {
-      dropdown.style.display = 'none'
+    if (dropdown.classList.contains('show') && !sortWrapper.contains(e.target)) {
+      dropdown.classList.remove('show')
     }
   })
 
@@ -361,12 +349,12 @@ function renderTable(el, apartments) {
   el.appendChild(toolbar)
 
   const table = document.createElement('table')
-  table.style.cssText = 'width: 100%; border-collapse: collapse; font-size: 13px;'
+  table.className = 'apartments-table'
 
   const header = document.createElement('tr')
   header.innerHTML = `<th>${t('table.name')}</th><th>${t('table.price')}</th><th>${t('table.pricePerM2')}</th><th>${t('table.area')}</th><th>${t('table.floor')}</th><th>${t('table.state')}</th>`
   header.querySelectorAll('th').forEach(th => {
-    th.style.cssText = 'border: 1px solid #e5e7eb; padding: 8px; text-align: center; background: #f9fafb; font-weight: 600;'
+    th.className = 'apartments-table-header'
   })
   table.appendChild(header)
 
@@ -378,9 +366,9 @@ function renderTable(el, apartments) {
     const stateKey = a.state ? `state.${a.state.toLowerCase()}` : ''
     row.innerHTML = `<td>${a.name ?? ''}</td><td>${a.price ?? ''}</td><td>${a.price_per_square_metre ?? ''}</td><td>${a.area ?? ''}</td><td>${a.floor ?? ''}</td><td>${stateKey ? t(stateKey) : ''}</td>`
     row.querySelectorAll('td').forEach(td => {
-      td.style.cssText = 'border: 1px solid #e5e7eb; padding: 8px; text-align: center;'
+      td.className = 'apartments-table-cell'
     })
-    row.style.cursor = 'pointer'
+    row.className = 'apartments-table-row'
     row.addEventListener('mouseenter', () => {
       if (!layer) return
       highlightApartmentsByLayer(layer)
@@ -399,35 +387,34 @@ function renderTable(el, apartments) {
 
 function openApartmentModal(apartment) {
   const modal = document.createElement('div')
-  modal.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px;'
+  modal.className = 'apartment-modal'
 
   const dialog = document.createElement('div')
-  dialog.style.cssText = 'background: #fff; border-radius: 12px; max-width: 800px; width: 100%; max-height: 90vh; overflow-y: auto; position: relative; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);'
+  dialog.className = 'apartment-modal-dialog modal-dialog'
 
   const closeBtn = document.createElement('button')
   closeBtn.innerHTML = '×'
-  closeBtn.style.cssText = 'position: absolute; top: 16px; right: 16px; width: 32px; height: 32px; padding: 0; font-size: 24px; line-height: 1; background: #f3f4f6; color: #6b7280; border: none; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 150ms ease;'
-  closeBtn.addEventListener('mouseenter', () => { closeBtn.style.background = '#e5e7eb'; closeBtn.style.color = '#374151' })
-  closeBtn.addEventListener('mouseleave', () => { closeBtn.style.background = '#f3f4f6'; closeBtn.style.color = '#6b7280' })
+  closeBtn.className = 'apartment-modal-close modal-close-btn'
 
   const content = document.createElement('div')
-  content.style.cssText = 'display: flex; flex-direction: column; gap: 24px; padding: 32px;'
+  content.className = 'apartment-modal-content modal-content'
 
   const header = document.createElement('div')
-  header.innerHTML = `<h2 style="margin: 0; font-size: 24px; font-weight: 700; color: #111827;">${apartment.name || t('modal.titleFallback')}</h2>`
+  header.innerHTML = `<h2 class="apartment-modal-title modal-title">${apartment.name || t('modal.titleFallback')}</h2>`
 
   const imageSection = document.createElement('div')
-  imageSection.style.cssText = 'display: flex; justify-content: center; background: #f9fafb; border-radius: 8px; padding: 24px; min-height: 200px; align-items: center;'
+  imageSection.className = 'apartment-modal-image-section modal-image-section'
+  imageSection.className = 'apartment-modal-image-section'
   imageSection.innerHTML = `
-    <div style="text-align: center; color: #6b7280;">
-      <div style="font-size: 48px; margin-bottom: 12px;">📷</div>
+    <div class="apartment-modal-image-placeholder">
+      <div class="apartment-modal-image-icon">📷</div>
       <div>${t('modal.imageTitle')}</div>
-      <div style="font-size: 12px; margin-top: 4px;">${t('modal.imagePlaceholder', { name: apartment.name || '' })}</div>
+      <div class="apartment-modal-image-text">${t('modal.imagePlaceholder', { name: apartment.name || '' })}</div>
     </div>
   `
 
   const detailsSection = document.createElement('div')
-  detailsSection.style.cssText = 'display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;'
+  detailsSection.className = 'apartment-modal-details-section'
 
   const details = [
     { label: t('table.name'), value: apartment.name || '-' },
@@ -440,10 +427,10 @@ function openApartmentModal(apartment) {
 
   details.forEach(detail => {
     const item = document.createElement('div')
-    item.style.cssText = 'padding: 12px; background: #f9fafb; border-radius: 6px;'
+    item.className = 'apartment-modal-detail-item'
     item.innerHTML = `
-      <div style="font-size: 12px; color: #6b7280; margin-bottom: 4px;">${detail.label}</div>
-      <div style="font-size: 16px; font-weight: 600; color: #111827;">${detail.value}</div>
+      <div class="apartment-modal-detail-label">${detail.label}</div>
+      <div class="apartment-modal-detail-value">${detail.value}</div>
     `
     detailsSection.appendChild(item)
   })
