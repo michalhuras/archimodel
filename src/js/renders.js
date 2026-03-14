@@ -161,6 +161,7 @@ export function initRenders() {
   let playTimer = null
   const urlCache = new Map()
   let spritespinActive = false
+  let resizeTimer = null
 
   function updateCompass(frameIndex) {
     if (!compassImg) return
@@ -213,6 +214,10 @@ export function initRenders() {
     }
   }
 
+  function getSpritespinStage() {
+    return document.querySelector(".spritespin-stage")
+  }
+
   toggleLayersBtn.onclick = () => {
     spritespinLayersEnabled = !spritespinLayersEnabled
     if (spritespinOverlaySvg) {
@@ -222,6 +227,64 @@ export function initRenders() {
       renderSpritespinOverlay({ frameIndex: spritespinCurrentFrameIndex })
     }
     updateControls()
+  }
+
+  function getSpriteSpinDimensions() {
+    const spritespinStage = getSpritespinStage()
+    const bounds = spritespinStage?.getBoundingClientRect()
+    const width = Math.max(240, Math.floor(bounds?.width || 0))
+    const height = Math.max(240, Math.floor(bounds?.height || width))
+    const size = Math.max(240, Math.min(width, height))
+    return { width: size, height: size }
+  }
+
+  function initSpriteSpin() {
+    const spEl = document.getElementById("spritespin-viewer")
+    if (!spEl) throw new Error("Missing #spritespin-viewer")
+    if (!window.jQuery || !window.jQuery.fn?.spritespin) {
+      throw new Error("SpriteSpin library not loaded")
+    }
+
+    const dims = getSpriteSpinDimensions()
+    if (
+      currentDims &&
+      currentDims.width === dims.width &&
+      currentDims.height === dims.height &&
+      window.jQuery(spEl).data("spritespin")
+    ) {
+      return
+    }
+
+    const frameUrls = entries.map((e) => makeUrl(e.name, e.bytes))
+    const $sp = window.jQuery(spEl)
+    if ($sp.data("spritespin")) {
+      $sp.spritespin("destroy")
+      $sp.empty()
+    }
+
+    currentDims = dims
+    spritespinActive = true
+
+    $sp.spritespin({
+      source: frameUrls,
+      width: dims.width,
+      height: dims.height,
+      sense: -1,
+      frameTime: 60,
+      animate: false,
+      frame: spritespinCurrentFrameIndex,
+      onFrameChanged: function (e, data) {
+        const frame = Number(data?.frame) || 0
+        spritespinCurrentFrameIndex = frame
+        updateCompass(frame)
+        if (spritespinLayersEnabled) {
+          renderSpritespinOverlay({ frameIndex: frame })
+        }
+      }
+    })
+
+    updateCompass(spritespinCurrentFrameIndex)
+    renderSpritespinOverlay({ frameIndex: spritespinCurrentFrameIndex })
   }
 
   async function loadZipAndInitSpriteSpin() {
@@ -246,6 +309,7 @@ export function initRenders() {
 
       entries = []
       idx = 0
+      currentDims = null
       updateControls()
 
       const res = await fetch(ZIP_URL)
@@ -280,40 +344,7 @@ export function initRenders() {
       await ensureOverlayGlobals()
 
       try {
-        const spEl = document.getElementById("spritespin-viewer")
-        if (!spEl) throw new Error("Missing #spritespin-viewer")
-        if (!window.jQuery || !window.jQuery.fn?.spritespin) {
-          throw new Error("SpriteSpin library not loaded")
-        }
-
-        const frameUrls = entries.map((e) => makeUrl(e.name, e.bytes))
-        spritespinActive = true
-
-        const $sp = window.jQuery(spEl)
-        if ($sp.data("spritespin")) {
-          $sp.spritespin("destroy")
-          $sp.empty()
-        }
-
-        $sp.spritespin({
-          source: frameUrls,
-          width: Math.min($sp.width() || 520, 520),
-          height: Math.min($sp.width() || 520, 520),
-          sense: -1,
-          frameTime: 60,
-          animate: false,
-          onFrameChanged: function (e, data) {
-            const frame = Number(data?.frame) || 0
-            spritespinCurrentFrameIndex = frame
-            updateCompass(frame)
-            if (spritespinLayersEnabled) {
-              renderSpritespinOverlay({ frameIndex: frame })
-            }
-          }
-        })
-
-        updateCompass(0)
-        renderSpritespinOverlay({ frameIndex: 0 })
+        initSpriteSpin()
       } catch (e) {
         spritespinActive = false
       }
@@ -327,6 +358,22 @@ export function initRenders() {
   setOnFilterChange(() => {
     renderSpritespinOverlay({ frameIndex: spritespinCurrentFrameIndex })
   })
+
+  const resizeObserver = new ResizeObserver(() => {
+    if (!entries.length) return
+    clearTimeout(resizeTimer)
+    resizeTimer = setTimeout(() => {
+      try {
+        initSpriteSpin()
+      } catch {
+      }
+    }, 120)
+  })
+
+  const spritespinStage = getSpritespinStage()
+  if (spritespinStage) {
+    resizeObserver.observe(spritespinStage)
+  }
 
   setTimeout(() => {
     try {

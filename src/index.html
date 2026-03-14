@@ -13,48 +13,42 @@
 <body class="app-page">
   <div class="app-shell">
     <main class="app-main">
-        <div class="app-viewer-inner" id="renders">
-          <div id="spritespin-wrapper" style="position: relative; width: 100%; margin: 0 auto;">
-            <div id="spritespin-viewer"></div>
-
-            <img
-              src="/.netlify/functions/logo"
-              data-i18n-alt="app.logoAlt"
-              alt="Logo"
-              style="position: absolute; top: 10px; left: 10px; width: 60px; height: auto; z-index: 100; pointer-events: none; opacity: 0.85;"
-            />
-
-            <div
-              style="position: absolute; top: 10px; right: 42px; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; border: solid transparent; z-index: 100;"
-            >
+        <section class="app-viewer-panel" id="renders">
+          <div id="spritespin-wrapper" class="spritespin-wrapper">
+            <div class="spritespin-stage">
+              <div id="spritespin-viewer"></div>
               <img
-                id="spritespin-compass"
-                src="/assets/icons/compass.svg"
-                data-i18n-alt="renders.compassAlt"
-                alt="compass"
-                style="width: 15px; height: 15px;"
+                class="spritespin-logo"
+                src="/.netlify/functions/logo"
+                data-i18n-alt="app.logoAlt"
+                alt="Logo"
               />
+
+              <div class="spritespin-compass-badge">
+                <img
+                  id="spritespin-compass"
+                  src="/assets/icons/compass.svg"
+                  data-i18n-alt="renders.compassAlt"
+                  alt="compass"
+                />
+              </div>
+
+              <button
+                id="spritespin-toggle-layers"
+                type="button"
+                disabled
+              >
+                <img
+                  src="/assets/icons/hide.svg"
+                  data-i18n-alt="renders.layersAlt"
+                  alt="layers"
+                />
+              </button>
             </div>
-
-            <button
-              id="spritespin-toggle-layers"
-              type="button"
-              disabled
-              style="position: absolute; top: 10px; right: 10px; width: 26px; height: 26px; padding: 0; border: 1px solid #64748b; cursor: pointer; z-index: 100; display: flex; align-items: center; justify-content: center;"
-            >
-              <img
-                src="/assets/icons/hide.svg"
-                data-i18n-alt="renders.layersAlt"
-                alt="layers"
-                style="width: 15px; height: 15px;"
-              />
-            </button>
-
-
           </div>
-        </div>
+        </section>
 
-        <div id="apartments" data-i18n="apartments.loading">Loading...</div>
+        <section id="apartments" class="app-table-panel" data-i18n="apartments.loading">Loading...</section>
     </main>
 
     <footer class="app-footer">
