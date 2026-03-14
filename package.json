@@ -9,10 +9,12 @@
     "webpack:dev": "webpack --mode development",
     "webpack:build": "webpack --mode production",
     "webpack:serve": "webpack serve --mode development",
+    "webpack:serve:netlify": "webpack serve --mode development --no-open --host 127.0.0.1 --port 8081",
     "prebuild": "npm run generate:version",
     "build": "npm run prebuild && npm run webpack:build",
     "build:full": "npm run generate:version && npm run precompute:overlays && npm run webpack:build",
-    "dev": "npm run webpack:serve",
+    "predev": "npm run generate:version",
+    "dev": "netlify dev -c \"npm run webpack:serve:netlify\" --target-port 8081",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
