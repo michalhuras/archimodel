@@ -29,9 +29,7 @@ const SORT_OPTIONS = [
   { key: 'area_asc', labelKey: 'sort.areaAsc', field: 'area', dir: 1 },
   { key: 'area_desc', labelKey: 'sort.areaDesc', field: 'area', dir: -1 },
   { key: 'floor_asc', labelKey: 'sort.floorAsc', field: 'floor', dir: 1 },
-  { key: 'floor_desc', labelKey: 'sort.floorDesc', field: 'floor', dir: -1 },
-  { key: 'name_asc', labelKey: 'sort.nameAsc', field: 'name', dir: 1 },
-  { key: 'name_desc', labelKey: 'sort.nameDesc', field: 'name', dir: -1 }
+  { key: 'floor_desc', labelKey: 'sort.floorDesc', field: 'floor', dir: -1 }
 ]
 
 const RANGE_FIELDS = [
@@ -353,7 +351,7 @@ function renderTable(el, apartments) {
 
   const header = document.createElement('tr')
   const headerLabels = [
-    t('table.name'),
+    t('table.visualization'),
     t('table.price'),
     t('table.pricePerM2'),
     t('table.area'),
@@ -375,7 +373,7 @@ function renderTable(el, apartments) {
 
     const stateKey = a.state ? `state.${a.state.toLowerCase()}` : ''
     const cellValues = [
-      a.name ?? '',
+      '📷',
       a.price ?? '',
       a.price_per_square_metre ?? '',
       a.area ?? '',
@@ -433,14 +431,7 @@ function openApartmentModal(apartment) {
   const imageIcon = document.createElement('div')
   imageIcon.className = 'apartment-modal-image-icon'
   imageIcon.textContent = '📷'
-  const imageTitle = document.createElement('div')
-  imageTitle.textContent = t('modal.imageTitle')
-  const imageText = document.createElement('div')
-  imageText.className = 'apartment-modal-image-text'
-  imageText.textContent = t('modal.imagePlaceholder', { name: apartment.name || '' })
   imagePlaceholder.appendChild(imageIcon)
-  imagePlaceholder.appendChild(imageTitle)
-  imagePlaceholder.appendChild(imageText)
   imageSection.appendChild(imagePlaceholder)
 
   const detailsSection = document.createElement('div')

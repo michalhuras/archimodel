@@ -27,10 +27,9 @@
   "sort.areaDesc": "Powierzchnia ↓",
   "sort.floorAsc": "Piętro ↑",
   "sort.floorDesc": "Piętro ↓",
-  "sort.nameAsc": "Nazwa A-Z",
-  "sort.nameDesc": "Nazwa Z-A",
 
   "table.name": "Nazwa",
+  "table.visualization": "Wizualizacja",
   "table.price": "Cena",
   "table.pricePerM2": "Cena/m²",
   "table.area": "Powierzchnia",

@@ -27,10 +27,9 @@
   "sort.areaDesc": "Area ↓",
   "sort.floorAsc": "Floor ↑",
   "sort.floorDesc": "Floor ↓",
-  "sort.nameAsc": "Name A-Z",
-  "sort.nameDesc": "Name Z-A",
 
   "table.name": "Name",
+  "table.visualization": "Visualization",
   "table.price": "Price",
   "table.pricePerM2": "Price/m²",
   "table.area": "Area",
