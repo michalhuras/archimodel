@@ -1,5 +1,15 @@
 # archimodel
 
+## License
+
+This project is proprietary and confidential. No use, copying, modification,
+distribution, or deployment is permitted without a prior written agreement
+signed by the copyright holder. See `LICENSE`.
+
+## Local development
+
+Use `npm run dev` to run the project locally with automatic rebuilds and live refresh through Netlify Dev.
+The app is served by Netlify Dev, and webpack watches source files in the background so changes are applied without running `npm run build` manually.
 
 ## Data inputs
 
