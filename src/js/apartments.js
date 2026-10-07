@@ -302,6 +302,14 @@ function renderTable(el, apartments) {
   const dropdown = document.createElement('div')
   dropdown.className = 'apartments-sort-dropdown'
 
+  const closeDropdown = () => {
+    dropdown.classList.remove('show')
+  }
+
+  const toggleDropdown = () => {
+    dropdown.classList.toggle('show')
+  }
+
   const noneItem = document.createElement('div')
   noneItem.textContent = t('filters.sortNone')
   noneItem.className = 'apartments-sort-item'
@@ -310,7 +318,7 @@ function renderTable(el, apartments) {
   noneItem.addEventListener('mouseleave', () => noneItem.style.background = currentSort ? '#fff' : '#eff6ff')
   noneItem.addEventListener('click', () => {
     currentSort = null
-    dropdown.style.display = 'none'
+    closeDropdown()
     renderTable(el, apartmentsData)
   })
   dropdown.appendChild(noneItem)
@@ -324,7 +332,7 @@ function renderTable(el, apartments) {
     item.addEventListener('mouseleave', () => item.style.background = currentSort === opt.key ? '#eff6ff' : '#fff')
     item.addEventListener('click', () => {
       currentSort = currentSort === opt.key ? null : opt.key
-      dropdown.style.display = 'none'
+      closeDropdown()
       renderTable(el, apartmentsData)
     })
     dropdown.appendChild(item)
@@ -332,12 +340,12 @@ function renderTable(el, apartments) {
 
   sortBtn.addEventListener('click', (e) => {
     e.stopPropagation()
-    dropdown.classList.toggle('show', dropdown.style.display !== 'none')
+    toggleDropdown()
   })
 
   document.addEventListener('click', (e) => {
     if (dropdown.classList.contains('show') && !sortWrapper.contains(e.target)) {
-      dropdown.classList.remove('show')
+      closeDropdown()
     }
   })
 
