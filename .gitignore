@@ -3,6 +3,7 @@ tmp/
 
 # Binary 
 *.png
+!doc/media/*.png
 
 # Project directories
 data/

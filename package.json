@@ -22,8 +22,8 @@
     "url": "git+https://github.com/michalhuras/archimodel.git"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": "Michał Huras",
+  "license": "MIT",
   "type": "commonjs",
   "bugs": {
     "url": "https://github.com/michalhuras/archimodel/issues"
