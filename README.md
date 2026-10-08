@@ -86,6 +86,7 @@ npm run build   # production build into dist/
 src/                 frontend (index.html, style.css, js/, i18n/, assets/)
 netlify/functions/   API endpoints and the JSON data they serve
 scripts/             overlay preprocessing, version generation, PNG to SVG converter
+scripts/blender/     procedural test model (office building) with renders and cameras
 doc/                 requirements and architecture notes (Polish)
 ```
 

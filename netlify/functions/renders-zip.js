@@ -1,6 +1,11 @@
+const fs = require("fs");
 const https = require("https");
+const path = require("path");
 
 const ZIP_URL = "https://pub-bd8c5d894c334dbfa30341d1d4208c04.r2.dev/render_webp.zip";
+
+// Local development: set RENDERS_ZIP_PATH (e.g. in .env) to serve a ZIP from disk instead of R2.
+const LOCAL_ZIP_PATH = process.env.RENDERS_ZIP_PATH;
 
 function download(url) {
   return new Promise((resolve, reject) => {
@@ -23,13 +28,15 @@ exports.handler = async (event) => {
   }
 
   try {
-    const zipBuffer = await download(ZIP_URL);
+    const zipBuffer = LOCAL_ZIP_PATH
+      ? fs.readFileSync(path.resolve(process.cwd(), LOCAL_ZIP_PATH))
+      : await download(ZIP_URL);
     return {
       statusCode: 200,
       isBase64Encoded: true,
       headers: {
         "content-type": "application/zip",
-        "cache-control": "public, max-age=3600",
+        "cache-control": LOCAL_ZIP_PATH ? "no-store" : "public, max-age=3600",
       },
       body: zipBuffer.toString("base64"),
     };
