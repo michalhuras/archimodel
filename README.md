@@ -50,7 +50,7 @@ npm run build   # production build into dist/
 
 ## Using your own model
 
-1. **Renders** - render the building from evenly spaced cameras, export the frames as `.webp` (sorted by file name), zip them and host the archive. Set its URL in [netlify/functions/renders-zip.js](netlify/functions/renders-zip.js).
+1. **Renders** - render the building from evenly spaced cameras and export the frames as `.webp` (sorted by file name). Pack and host them as described in [Deployment](#deployment).
 2. **Overlays** - export the scene with the same cameras to FBX and run:
 
    ```bash
@@ -78,14 +78,61 @@ npm run build   # production build into dist/
    ```
 
    `state` is one of `selling`, `reserved`, `sold`.
-4. **Logo** - set the logo URL in [netlify/functions/logo.js](netlify/functions/logo.js).
+4. **Logo** - an SVG uploaded to the bucket together with the renders, see [Deployment](#deployment).
+
+## Deployment
+
+The site and the functions are hosted on Netlify. Large static files (renders and the logo) live in a storage bucket (Cloudflare R2) and are proxied by Netlify Functions, so the bucket URL never reaches the browser.
+
+### 1. Build the bucket bundle
+
+```bash
+npm run build:assets
+# or with explicit inputs:
+node scripts/build-assets.mjs --renders data/biurowiec/render_webp --logo data/icon.svg
+```
+
+This creates `build/bucket/` (git-ignored) with everything the bucket needs:
+
+| File | Content | Served by |
+|---|---|---|
+| `render_webp.zip` | 360° frames as `render_webp/<frame>.webp`, stored uncompressed (frames are already compressed) | [renders-zip.js](netlify/functions/renders-zip.js) |
+| `icon.svg` | logo | [logo.js](netlify/functions/logo.js) |
+
+Options:
+
+- `--renders` - a directory with frames or an existing ZIP to repack (default `data/biurowiec/render_webp`). Repacking also fixes ZIPs made on Windows with `\` in entry paths.
+- `--logo` - logo file (default `data/icon.svg`).
+- `--out` - output directory (default `build/bucket`).
+- `--overlays` - `layer-overlays.json` used to check that the number of frames matches `frameCount` (default `netlify/functions/layer-overlays.json`). A mismatch means the overlays will not line up with the renders.
+
+### 2. Upload to the bucket
+
+Upload both files to the bucket root, keeping their names. Use the Cloudflare dashboard (R2 → bucket → Upload) or Wrangler:
+
+```bash
+npx wrangler r2 object put <bucket>/render_webp.zip --file build/bucket/render_webp.zip --remote
+npx wrangler r2 object put <bucket>/icon.svg --file build/bucket/icon.svg --remote
+```
+
+Expose the bucket through a custom domain (R2 → bucket → Settings → Custom Domains). The public `r2.dev` URL is meant for development only.
+
+### 3. Point the functions to the bucket
+
+The bucket URLs are currently set as constants in [renders-zip.js](netlify/functions/renders-zip.js) (`ZIP_URL`) and [logo.js](netlify/functions/logo.js) (`LOGO_URL`).
+
+For local development you can skip the bucket for renders: set `RENDERS_ZIP_PATH` in `.env` to a local ZIP, for example `RENDERS_ZIP_PATH=build/bucket/render_webp.zip`, and restart `npm run dev`.
+
+### 4. Deploy the site
+
+Commit and push. `layer-overlays.json` and `apartments.json` in `netlify/functions/` must match the renders in the bucket, so upload the bundle before deploying data generated from a new model.
 
 ## Project structure
 
 ```text
 src/                 frontend (index.html, style.css, js/, i18n/, assets/)
 netlify/functions/   API endpoints and the JSON data they serve
-scripts/             overlay preprocessing, version generation, PNG to SVG converter
+scripts/             overlay preprocessing, bucket bundle, version generation, PNG to SVG converter
 scripts/blender/     procedural test model (office building) with renders and cameras
 doc/                 requirements and architecture notes (Polish)
 ```
