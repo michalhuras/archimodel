@@ -12,6 +12,7 @@ data/
 public/version.json
 src/version.json
 
+.cursor
 .env
 .env.*
 !.env.example
