@@ -1,29 +1,5 @@
 [
-  {
-    "name": "Apartment A1",
-    "price": 2500000,
-    "price_per_square_metre": 27778,
-    "area": 90,
-    "floor": 1,
-    "state": "selling",
-    "layer_name": "kondygnacja_01"
-  },
-  {
-    "name": "Apartment A2",
-    "price": 2800000,
-    "price_per_square_metre": 32941,
-    "area": 85,
-    "floor": 1,
-    "state": "reserved",
-    "layer_name": "kondygnacja_02"
-  },
-  {
-    "name": "Apartment B1",
-    "price": 3200000,
-    "price_per_square_metre": 25600,
-    "area": 125,
-    "floor": 2,
-    "state": "sold",
-    "layer_name": "kondygnacja_03"
-  }
+  { "name": "Biuro parter", "price": 4200000, "price_per_square_metre": 5250, "area": 800, "floor": 0, "state": "selling", "layer_name": "kondygnacja_01" },
+  { "name": "Biuro 1. piętro", "price": 3900000, "price_per_square_metre": 4875, "area": 800, "floor": 1, "state": "reserved", "layer_name": "kondygnacja_02" },
+  { "name": "Biuro 2. piętro", "price": 4100000, "price_per_square_metre": 5125, "area": 800, "floor": 2, "state": "sold", "layer_name": "kondygnacja_03" }
 ]
