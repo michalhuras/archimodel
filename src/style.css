@@ -1503,6 +1503,10 @@ footer p+p {
 	padding-top: 8px;
 }
 
+.app-footer a {
+	color: inherit;
+}
+
 @media (max-width: 768px) {
 	.app-page {
 		padding: 12px;
