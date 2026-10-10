@@ -2,8 +2,6 @@ import { normalizeLayerName, colorForState, fetchJson, highlightApartmentsByLaye
 import { getHiddenLayers, setOnFilterChange, openApartmentDetailsByLayer } from './apartments.js';
 import { t } from './i18n.js';
 
-const ZIP_BASE_URL = "https://pub-bd8c5d894c334dbfa30341d1d4208c04.r2.dev"
-const ZIP_FILE_NAME = "render_webp.zip"
 const ZIP_URL = "/.netlify/functions/renders-zip"
 
 async function ensureOverlayGlobals() {

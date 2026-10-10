@@ -119,9 +119,19 @@ Expose the bucket through a custom domain (R2 → bucket → Settings → Custom
 
 ### 3. Point the functions to the bucket
 
-The bucket URLs are currently set as constants in [renders-zip.js](netlify/functions/renders-zip.js) (`ZIP_URL`) and [logo.js](netlify/functions/logo.js) (`LOGO_URL`).
+The functions read the bucket URLs from environment variables. No URL is stored in the code.
 
-For local development you can skip the bucket for renders: set `RENDERS_ZIP_PATH` in `.env` to a local ZIP, for example `RENDERS_ZIP_PATH=build/bucket/render_webp.zip`, and restart `npm run dev`.
+| Variable | Used by | Value |
+|---|---|---|
+| `RENDERS_ZIP_URL` | [renders-zip.js](netlify/functions/renders-zip.js) | URL of `render_webp.zip` in the bucket |
+| `LOGO_URL` | [logo.js](netlify/functions/logo.js) | URL of `icon.svg` in the bucket |
+| `RENDERS_ZIP_PATH` | renders-zip.js | optional, local ZIP for development, e.g. `build/bucket/render_webp.zip` |
+| `LOGO_PATH` | logo.js | optional, local SVG for development, e.g. `build/bucket/icon.svg` |
+
+A local path takes precedence over the URL. If neither is set, the function returns a 500 error naming the missing variable.
+
+- **Netlify:** set `RENDERS_ZIP_URL` and `LOGO_URL` in Site configuration → Environment variables before deploying.
+- **Local:** copy [.env.example](.env.example) to `.env` and fill in either the URLs or the local paths, then restart `npm run dev`.
 
 ### 4. Deploy the site
 
@@ -134,7 +144,7 @@ src/                 frontend (index.html, style.css, js/, i18n/, assets/)
 netlify/functions/   API endpoints and the JSON data they serve
 scripts/             overlay preprocessing, bucket bundle, version generation, PNG to SVG converter
 scripts/blender/     procedural test model (office building) with renders and cameras
-doc/                 requirements and architecture notes (Polish)
+doc/media/           screenshots and recordings for this README
 ```
 
 ## License
