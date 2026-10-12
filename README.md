@@ -2,7 +2,6 @@
 
 Interactive 360° viewer for residential developments. Rotate a rendered model of the building, see every apartment highlighted on it, and browse, filter and sort them in a synced table.
 
-<!-- Replace with a recording of the viewer, see doc/media/README.md -->
 ![ArchiModel demo](doc/media/demo.gif)
 
 ## Features
