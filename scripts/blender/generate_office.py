@@ -1,5 +1,5 @@
 """
-Generates a simple 3-storey office building in Blender, renders an 8-frame turntable
+Generates a simple 3-storey office building in Blender, renders a 32-frame turntable
 and exports OBJ (geometry) + FBX (cameras) compatible with precompute-layer-overlays.mjs.
 
 Usage:
@@ -32,7 +32,7 @@ MULLION_SPACING = 2.5
 MULLION_SIZE = 0.12
 PARAPET = 1.0
 
-FRAMES = 8
+FRAMES = 32
 FOV_DEG = 40.0
 CAM_DISTANCE = 72.0
 CAM_HEIGHT = 16.0
