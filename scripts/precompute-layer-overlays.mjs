@@ -61,6 +61,206 @@ function pathFromHull(hull) {
   return d
 }
 
+// --- Exact (possibly concave) layer outline ---------------------------------
+//
+// A convex hull of the projected vertices fills concave notches, e.g. a storey
+// seen from a corner is a "V" of two facades and its hull overlaps the storey
+// above. Instead, the camera-facing triangles are rasterized into a mask at
+// frame resolution and the outer contour of every mask component is traced.
+
+// Screen-space triangles [x0, y0, x1, y1, x2, y2] of the layer's camera-facing,
+// non-horizontal faces (the same faces projectLayerPoints() uses).
+function projectLayerTriangles({ nodes, camera, w, h }) {
+  const tris = []
+  const a = new THREE.Vector3()
+  const b = new THREE.Vector3()
+  const c = new THREE.Vector3()
+  const ab = new THREE.Vector3()
+  const ac = new THREE.Vector3()
+  const n = new THREE.Vector3()
+  const camDir = new THREE.Vector3()
+
+  for (const node of nodes) {
+    node.traverse((desc) => {
+      if (!desc || !desc.isMesh || !desc.geometry) return
+      const pos = desc.geometry.attributes?.position
+      if (!pos) return
+      const idx = desc.geometry.index
+      const triCount = idx ? Math.floor(idx.count / 3) : Math.floor(pos.count / 3)
+
+      for (let t = 0; t < triCount; t++) {
+        a.fromBufferAttribute(pos, idx ? idx.getX(t * 3) : t * 3).applyMatrix4(desc.matrixWorld)
+        b.fromBufferAttribute(pos, idx ? idx.getX(t * 3 + 1) : t * 3 + 1).applyMatrix4(desc.matrixWorld)
+        c.fromBufferAttribute(pos, idx ? idx.getX(t * 3 + 2) : t * 3 + 2).applyMatrix4(desc.matrixWorld)
+
+        n.copy(ab.copy(b).sub(a)).cross(ac.copy(c).sub(a))
+        const len = n.length()
+        if (len < 1e-8) continue
+        n.multiplyScalar(1 / len)
+        if (Math.abs(n.y) > 0.85) continue
+
+        camDir.copy(camera.position).sub(a).normalize()
+        if (n.dot(camDir) <= 0.02) continue
+
+        const out = []
+        for (const v of [a, b, c]) {
+          const p = v.clone().project(camera)
+          if (p.z < -1 || p.z > 1) break
+          out.push((p.x * 0.5 + 0.5) * w, (-p.y * 0.5 + 0.5) * h)
+        }
+        if (out.length === 6) tris.push(out)
+      }
+    })
+  }
+  return tris
+}
+
+function rasterizeTriangles(tris, w, h) {
+  const mask = new Uint8Array(w * h)
+  // Small tolerance so adjacent triangles meet without hairline gaps.
+  const eps = 0.75
+  for (const [x0, y0, x1, y1, x2, y2] of tris) {
+    const area = (x1 - x0) * (y2 - y0) - (x2 - x0) * (y1 - y0)
+    if (Math.abs(area) < 1e-6) continue
+    const s = area > 0 ? 1 : -1
+    const minX = Math.max(0, Math.floor(Math.min(x0, x1, x2) - 1))
+    const maxX = Math.min(w - 1, Math.ceil(Math.max(x0, x1, x2) + 1))
+    const minY = Math.max(0, Math.floor(Math.min(y0, y1, y2) - 1))
+    const maxY = Math.min(h - 1, Math.ceil(Math.max(y0, y1, y2) + 1))
+    // Edge functions, normalised to pixel distance so eps is in pixels.
+    const edges = [
+      [x0, y0, x1, y1],
+      [x1, y1, x2, y2],
+      [x2, y2, x0, y0]
+    ].map(([ax, ay, bx, by]) => {
+      const l = Math.hypot(bx - ax, by - ay) || 1
+      return [ax, ay, (bx - ax) / l, (by - ay) / l]
+    })
+    for (let y = minY; y <= maxY; y++) {
+      const py = y + 0.5
+      for (let x = minX; x <= maxX; x++) {
+        const px = x + 0.5
+        let inside = true
+        for (const [ax, ay, dx, dy] of edges) {
+          if (s * (dx * (py - ay) - dy * (px - ax)) < -eps) {
+            inside = false
+            break
+          }
+        }
+        if (inside) mask[y * w + x] = 1
+      }
+    }
+  }
+  return mask
+}
+
+// Moore-neighbour tracing of the outer boundary starting at (sx, sy), the first
+// pixel of a component in raster order (so its left neighbour is background).
+const MOORE = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]]
+function traceBoundary(mask, w, h, sx, sy) {
+  const at = (x, y) => x >= 0 && y >= 0 && x < w && y < h && mask[y * w + x] === 1
+  const dirOf = (dx, dy) => MOORE.findIndex(([mx, my]) => mx === dx && my === dy)
+  const pts = [[sx, sy]]
+  let cx = sx
+  let cy = sy
+  let back = 4 // direction from the current pixel to the background pixel we came from
+  let second = null
+  for (let iter = 0; iter < w * h * 4; iter++) {
+    let found = -1
+    for (let k = 1; k <= 8; k++) {
+      const d = (back + k) % 8
+      if (at(cx + MOORE[d][0], cy + MOORE[d][1])) {
+        found = d
+        break
+      }
+    }
+    if (found < 0) break // isolated pixel
+    const nx = cx + MOORE[found][0]
+    const ny = cy + MOORE[found][1]
+    if (cx === sx && cy === sy && second && nx === second[0] && ny === second[1]) break
+    if (!second) second = [nx, ny]
+    const prev = (found + 7) % 8
+    back = dirOf(cx + MOORE[prev][0] - nx, cy + MOORE[prev][1] - ny)
+    cx = nx
+    cy = ny
+    pts.push([cx, cy])
+  }
+  return pts
+}
+
+function simplifyPolyline(pts, tolerance) {
+  if (pts.length < 3) return pts
+  const keep = new Uint8Array(pts.length)
+  keep[0] = keep[pts.length - 1] = 1
+  const stack = [[0, pts.length - 1]]
+  while (stack.length) {
+    const [i0, i1] = stack.pop()
+    const [ax, ay] = pts[i0]
+    const [bx, by] = pts[i1]
+    const len = Math.hypot(bx - ax, by - ay)
+    let maxD = 0
+    let maxI = -1
+    for (let i = i0 + 1; i < i1; i++) {
+      const [px, py] = pts[i]
+      const d = len < 1e-9 ? Math.hypot(px - ax, py - ay) : Math.abs((bx - ax) * (ay - py) - (ax - px) * (by - ay)) / len
+      if (d > maxD) {
+        maxD = d
+        maxI = i
+      }
+    }
+    if (maxD > tolerance) {
+      keep[maxI] = 1
+      stack.push([i0, maxI], [maxI, i1])
+    }
+  }
+  return pts.filter((_, i) => keep[i])
+}
+
+// Returns outer contours (arrays of {x, y}) of all mask components, largest first.
+function outlineFromTriangles(tris, w, h, { minArea = 25, tolerance = 1.25 } = {}) {
+  const mask = rasterizeTriangles(tris, w, h)
+  const seen = new Uint8Array(w * h)
+  const contours = []
+  const queue = new Int32Array(w * h)
+  for (let i = 0; i < mask.length; i++) {
+    if (!mask[i] || seen[i]) continue
+    // Flood-fill the component to mark it and measure its area.
+    let head = 0
+    let tail = 0
+    queue[tail++] = i
+    seen[i] = 1
+    while (head < tail) {
+      const p = queue[head++]
+      const x = p % w
+      const y = (p - x) / w
+      for (const [dx, dy] of MOORE) {
+        const nx = x + dx
+        const ny = y + dy
+        if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue
+        const q = ny * w + nx
+        if (mask[q] && !seen[q]) {
+          seen[q] = 1
+          queue[tail++] = q
+        }
+      }
+    }
+    if (tail < minArea) continue
+    const boundary = traceBoundary(mask, w, h, i % w, Math.floor(i / w))
+    // Close the ring for simplification, then drop the duplicated end point.
+    const simplified = simplifyPolyline([...boundary, boundary[0]], tolerance).slice(0, -1)
+    if (simplified.length >= 3) {
+      contours.push({ area: tail, points: simplified.map(([x, y]) => ({ x: x + 0.5, y: y + 0.5 })) })
+    }
+  }
+  return contours.sort((p, q) => q.area - p.area).map((c) => c.points)
+}
+
+function pathFromContours(contours) {
+  return contours
+    .map((pts) => `M ${pts.map((p) => `${p.x} ${p.y}`).join(" L ")} Z`)
+    .join(" ")
+}
+
 function findLayerNodes(root, layerName) {
   const matches = []
   root.traverse((node) => {
@@ -694,8 +894,10 @@ async function main() {
       if (visTested >= minVisTested && visPassed / visTested < 0.08) continue
 
       if (pts.length < 3) continue
-      const hull = convexHull(pts)
-      const d = pathFromHull(hull)
+      const contours = outlineFromTriangles(projectLayerTriangles({ nodes, camera, w, h }), w, h)
+      // Fall back to the convex hull if rasterization produced nothing usable (tiny layers).
+      const hull = contours.length ? contours[0] : convexHull(pts)
+      const d = contours.length ? pathFromContours(contours) : pathFromHull(hull)
       if (d) perLayer[layerName] = { d, hull }
     }
 
